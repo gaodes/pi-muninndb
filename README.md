@@ -51,13 +51,13 @@ If MuninnDB isn't running when Pi starts, you'll see:
 
 ### Extension Hooks
 
-| Hook                 | What it does                                                                                          |
-| -------------------- | ----------------------------------------------------------------------------------------------------- |
-| `session_start`      | Health-check MuninnDB, start SSE subscription, notify user                                            |
-| `before_agent_start` | On first turn: tell LLM to call `muninndb_muninn_where_left_off`                                      |
-| `context`            | Push contradiction alerts, memory updates, and activation signals via SSE                             |
-| `session_shutdown`   | Clean up SSE connection                                                                               |
-| `tool_call`          | Auto-inject `vault` parameter, `annotate: true` on recall, batch nudge, and feedback hint on recall   |
+| Hook                 | What it does                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| `session_start`      | Health-check MuninnDB, start SSE subscription, notify user                                          |
+| `before_agent_start` | On first turn: tell LLM to call `muninndb_muninn_where_left_off`                                    |
+| `context`            | Push contradiction alerts, memory updates, and activation signals via SSE                           |
+| `session_shutdown`   | Clean up SSE connection                                                                             |
+| `tool_call`          | Auto-inject `vault` parameter, `annotate: true` on recall, batch nudge, and feedback hint on recall |
 
 ### MCP Tools (via MuninnDB on port 8750)
 
@@ -119,15 +119,15 @@ Plus 18 more — call `muninndb_muninn_guide` for the full list.
 
 The extension adds several automatic behaviors on top of the MCP tools:
 
-| Behavior | Description |
-| -------- | ----------- |
-| **Vault auto-injection** | All 39 `muninndb_muninn_*` tool calls receive the resolved vault name automatically. No need to pass `vault` manually. |
-| **Recall annotations** | `muninn_recall` calls automatically get `annotate: true`, so results include staleness, conflict, and trust metadata. |
-| **Feedback hint** | After each `muninn_recall`, a subtle context hint reminds the agent that `muninn_feedback` exists for quality scoring. |
-| **Batch nudge** | After 2+ individual `muninn_remember` calls in one turn, the extension nudges toward `muninn_remember_batch`. |
-| **SSE: contradictions** | When a new memory conflicts with an existing one, the agent receives a `[⚠️ Contradiction detected]` context push. |
+| Behavior                   | Description                                                                                                                       |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Vault auto-injection**   | All 39 `muninndb_muninn_*` tool calls receive the resolved vault name automatically. No need to pass `vault` manually.            |
+| **Recall annotations**     | `muninn_recall` calls automatically get `annotate: true`, so results include staleness, conflict, and trust metadata.             |
+| **Feedback hint**          | After each `muninn_recall`, a subtle context hint reminds the agent that `muninn_feedback` exists for quality scoring.            |
+| **Batch nudge**            | After 2+ individual `muninn_remember` calls in one turn, the extension nudges toward `muninn_remember_batch`.                     |
+| **SSE: contradictions**    | When a new memory conflicts with an existing one, the agent receives a `[⚠️ Contradiction detected]` context push.                |
 | **SSE: threshold crossed** | When a memory's activation score crosses the subscription threshold, the agent receives an `[📈 Activation signal]` context push. |
-| **SSE: new writes** | High-scoring new memories (≥0.7) are pushed to the agent's context in real time. |
+| **SSE: new writes**        | High-scoring new memories (≥0.7) are pushed to the agent's context in real time.                                                  |
 
 All LLM operations go through MCP. The extension only provides SSE subscription (which MCP cannot do), context injection, setup automation, and diagnostics.
 

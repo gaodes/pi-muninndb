@@ -7,3 +7,12 @@ dist-tests/
 *.log
 package-lock.json
 .primecodex.local.json
+
+# Knowledge graph outputs
+graphify-out/
+
+# Lens cache
+.pi-lens/
+
+# Upstream source reference (large, not tracked)
+muninndb-upstream/
