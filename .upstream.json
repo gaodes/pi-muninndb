@@ -10,7 +10,7 @@
   },
   "creationMethod": "fork",
   "createdAt": "2026-05-23T16:22:20+0300",
-  "updatedAt": "2026-05-23T16:22:20+0300",
+  "updatedAt": "2026-05-23T22:00:00+0300",
   "inspirations": [
     {
       "name": "muninndb",
@@ -19,6 +19,27 @@
       "license": "MIT"
     }
   ],
-  "localEnhancements": [],
+  "localEnhancements": [
+    {
+      "date": "2026-05-23",
+      "description": "Add /muninn-test command with fast mode (16 REST tests) and full mode (49 tests covering all 39 MCP tools via HTTP JSON-RPC)",
+      "files": ["src/test.ts", "index.ts", "package.json"]
+    },
+    {
+      "date": "2026-05-23",
+      "description": "Fix /muninn-dream env loading — read ~/.muninn/muninn.env before running dream protocol",
+      "files": ["src/dream.ts"]
+    },
+    {
+      "date": "2026-05-23",
+      "description": "Add PrimeCodex standards: .primecodex.json catalog metadata, .upstream.json provenance tracking, CHANGELOG.md",
+      "files": [".primecodex.json", ".upstream.json", "CHANGELOG.md"]
+    },
+    {
+      "date": "2026-05-23",
+      "description": "Full README rewrite for @gaodes/pi-muninndb identity, commands, test documentation, and architecture",
+      "files": ["README.md"]
+    }
+  ],
   "updates": []
 }
