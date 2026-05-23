@@ -7,15 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **MUNINN_TOOLS allowlist expanded to all 39 tools** — vault auto-injection now works for every MuninnDB MCP tool, not just the original 18. Previously, tools like `muninn_trust`, `muninn_feedback`, `muninn_entity`, `muninn_traverse`, `muninn_remember_tree`, and 16 others were callable but didn't receive automatic vault resolution.
-
 ### Added
 
+- **5 new CLI-wrapped commands** — backup, health, dream, import, and upgrade commands now wrap the `muninn` CLI directly instead of custom reimplementations
+  - `/muninn-backup` — export vault archive + offline data backup via `muninn vault export` and `muninn backup`
+  - `/muninn-health` — server status, vault stats, service ports via REST API + `muninn status` + `muninn show vaults`
+  - `/muninn-dream` — rewritten to wrap `muninn dream` CLI with dry-run preview + confirmation flow
+  - `/muninn-import` — import `.muninn` backup archives via `muninn vault import` + `list` subcommand
+  - `/muninn-upgrade` — check for and install MuninnDB updates via `muninn version` + `muninn upgrade`
+- **Dream Protocol documentation** — new "Dream Protocol" section in README covering offline constraint, command flow, CLI flags, manual alternative, and practical guidance
 - **Auto-inject `annotate: true` on recall** — `muninn_recall` calls now always request retrieval annotations (staleness, conflict, trust metadata) so agents get richer context without needing to remember the flag
 - **`threshold_crossed` SSE trigger handling** — the SSE subscription now surfaces activation score signals when memories cross the subscription threshold, alongside existing `new_write` and `contradiction_detected` events
-- **Post-recall feedback hint** — after each `muninn_recall` call, a subtle hint reminds agents that `muninn_feedback` exists for quality scoring (display: false, visible in context but not intrusive)
+- **Post-recall feedback hint** — after each `muninn_recall` call, a subtle hint reminds agents that `muninn_feedback` exists for quality scoring
+
+### Fixed
+
+- **Health command vault stats** — `/muninn-health` now uses `/api/stats` endpoint (returns per-vault `total_engrams` and `coherence.score`) instead of the non-existent `/api/vaults/<name>/stats` that 404'd on MuninnDB v0.6.0
+- **MUNINN_TOOLS allowlist expanded to all 39 tools** — vault auto-injection now works for every MuninnDB MCP tool, not just the original 18. Previously, tools like `muninn_trust`, `muninn_feedback`, `muninn_entity`, `muninn_traverse`, `muninn_remember_tree`, and 16 others were callable but didn't receive automatic vault resolution
 
 ## [1.2.0] - 2026-05-23
 

@@ -36,16 +36,20 @@ If MuninnDB isn't running when Pi starts, you'll see:
 
 ## Commands
 
-| Command                       | Description                                                    |
-| ----------------------------- | -------------------------------------------------------------- |
-| `/muninn-setup`               | Install MuninnDB, configure MCP + AGENTS.md                    |
-| `/muninn-remove`              | Unregister extension, remove MCP config, clean AGENTS.md       |
-| `/muninn-vault status`        | Show current vault and mapping                                 |
-| `/muninn-vault create [name]` | Link current directory to a named vault                        |
-| `/muninn-vault unlink`        | Remove vault mapping for current directory                     |
-| `/muninn-dream`               | Run dream protocol: consolidate, evolve, enrich memories       |
-| `/muninn-test`                | Fast smoke test — 16 REST API tests in ~120ms                  |
-| `/muninn-test full`           | Full smoke test — 49 tests covering all 39 MCP tools in ~380ms |
+| Command                       | Description                                                        |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `/muninn-setup`               | Install MuninnDB, configure MCP + AGENTS.md                        |
+| `/muninn-remove`              | Unregister extension, remove MCP config, clean AGENTS.md           |
+| `/muninn-vault status`        | Show current vault and mapping                                     |
+| `/muninn-vault create [name]` | Link current directory to a named vault                            |
+| `/muninn-vault unlink`        | Remove vault mapping for current directory                         |
+| `/muninn-dream`               | Run dream protocol: consolidate, evolve, enrich memories (offline) |
+| `/muninn-test`                | Fast smoke test — 16 REST API tests in ~120ms                      |
+| `/muninn-test full`           | Full smoke test — 49 tests covering all 39 MCP tools in ~380ms     |
+| `/muninn-backup`              | Export vault archive + offline data backup                          |
+| `/muninn-health`              | Show server status, vault stats, service ports                      |
+| `/muninn-import`              | Import a `.muninn` backup archive into a vault                      |
+| `/muninn-upgrade`             | Check for and install MuninnDB updates                              |
 
 ## How It Works
 
@@ -103,8 +107,12 @@ Plus 18 more — call `muninndb_muninn_guide` for the full list.
 │  /muninn-setup  → Install + configure        │
 │  /muninn-remove → Uninstall                  │
 │  /muninn-test   → Smoke test (REST + MCP)    │
-│  /muninn-dream  → Dream protocol             │
-│  /muninn-vault  → Vault management            │
+│  /muninn-dream  → Dream protocol (via CLI)  │
+│  /muninn-backup → Export vault archive       │
+│  /muninn-health → Server status + stats      │
+│  /muninn-import → Import backup archive      │
+│  /muninn-upgrade→ Check/install updates      │
+│  /muninn-vault  → Vault management           │
 └──────────────┬───────────────────┬───────────┘
                │                   │
           SSE subscription     MCP tools
@@ -168,6 +176,60 @@ Runs 49 tests covering all 39 MCP tools via HTTP JSON-RPC on port 8750 in ~380ms
 | Batch                   | 1     | remember_batch                                                       |
 
 All test artifacts are tagged `__pi_test__` and cleaned up automatically.
+
+## Dream Protocol
+
+`muninn dream` is LLM-driven memory consolidation — it merges related memories, evolves stale ones, and runs enrichment on unprocessed engrams. Think of it as "defrag for your memory vault."
+
+### Key Constraint
+
+**Dream requires the MuninnDB server to be stopped.** It reads SQLite data files directly, not through the REST API. While dream runs, all MCP tools (remember, recall, etc.) are offline.
+
+### Running Dream
+
+```
+/muninn-dream
+```
+
+This command:
+
+1. Detects the vault for the current project (or uses `default`)
+2. Warns if the server is running
+3. Runs `muninn dream --dry-run --scope <vault>` to preview changes
+4. Shows the preview and asks for confirmation
+5. Runs `muninn dream --scope <vault>` for real if confirmed
+
+**Flags:**
+
+| Flag              | Description                                        |
+| ----------------- | -------------------------------------------------- |
+| `--dry-run`       | Preview only — show what dream would do, then stop |
+| `--scope <vault>` | Override vault (defaults to current project vault) |
+| `--force`         | Bypass trigger gates (not yet implemented)         |
+
+**Manual CLI alternative:**
+
+```bash
+# Stop the server first
+muninn stop
+
+# Preview consolidation
+muninn dream --dry-run --scope default
+
+# Run for real
+muninn dream --scope default
+
+# Restart the server
+muninn start
+```
+
+### Practical Guidance
+
+- **When to run:** When stepping away from the machine, or between sessions. Large vaults take longer.
+- **Scope it:** Use `--scope <vault>` to limit consolidation to one vault. Smaller scope = faster.
+- **Downtime:** Expect ~30–60 seconds of MCP unavailability per vault, depending on engram count.
+- **Automated runs:** For overnight maintenance, use a cron/launchd job: `muninn stop && muninn dream --scope default && muninn start`
+- **No data loss:** Dream consolidates and evolves — it never deletes without archiving. Soft-deleted memories remain recoverable for 7 days.
 
 ## Development
 

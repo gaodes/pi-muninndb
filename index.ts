@@ -8,6 +8,11 @@ import {
   isProjectDirectory,
   PROJECT_MARKERS,
 } from "./src/vault";
+import { registerBackupCommand } from "./src/commands/backup";
+import { registerHealthCommand } from "./src/commands/health";
+import { registerDreamCommand } from "./src/commands/dream";
+import { registerImportCommand } from "./src/commands/import";
+import { registerUpgradeCommand } from "./src/commands/upgrade";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,12 +25,23 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
  *   /muninn-setup    — Install, configure, and verify MuninnDB integration
  *   /muninn-remove   — Remove MuninnDB integration (keeps MuninnDB data)
  *   /muninn-vault    — Manage vaults: status, create, unlink
- *   /muninn-dream    — Run dream protocol: consolidate, evolve, enrich memories
+ *   /muninn-dream    — Run dream protocol via CLI (dry-run preview + execution)
  *   /muninn-test     — Run smoke tests against MuninnDB REST API
+ *   /muninn-backup   — Export vault archive + offline data backup
+ *   /muninn-health   — Show server status, vault stats, service ports
+ *   /muninn-import   — Import a .muninn backup archive into a vault
+ *   /muninn-upgrade  — Check for and install MuninnDB updates
  */
 export default function (pi: ExtensionAPI) {
   registerLifecycleHooks(pi);
   registerVaultInjection(pi);
+
+  // New CLI-wrapped commands
+  registerBackupCommand(pi);
+  registerHealthCommand(pi);
+  registerDreamCommand(pi);
+  registerImportCommand(pi);
+  registerUpgradeCommand(pi);
 
   pi.registerCommand("muninn-setup", {
     description: "Setup MuninnDB memory integration (install, configure, verify)",
@@ -124,28 +140,9 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  pi.registerCommand("muninn-dream", {
-    description: "Run dream protocol: synthesize and write durable memories",
-    handler: async (_args, ctx) => {
-      const vault = resolveVaultName(process.cwd());
-      const dreamBin = fileURLToPath(new URL("./dist/muninn-dream.mjs", import.meta.url));
-
-      ctx.ui.notify(`🧠 Running muninn-dream (vault: "${vault}")`, "info");
-      await ctx.waitForIdle();
-
-      const result = await pi.exec(process.execPath, [dreamBin, "--vault", vault], {
-        cwd: process.cwd(),
-      });
-
-      const output = [result.stdout.trim(), result.stderr.trim()].filter(Boolean).join("\n");
-      ctx.ui.notify(
-        result.code === 0
-          ? output || "muninn-dream completed"
-          : output || `muninn-dream exited with code ${result.code}`,
-        result.code === 0 ? "info" : "warning",
-      );
-    },
-  });
+  // NOTE: /muninn-dream is now registered by registerDreamCommand() above,
+  // which wraps the CLI `muninn dream` instead of the old custom dream.ts script.
+  // The old dream.ts remains available as the `muninn-dream` bin in package.json.
 
   pi.registerCommand("muninn-test", {
     description: "Run smoke tests: /muninn-test (fast, REST) or /muninn-test full (REST + MCP)",
