@@ -11,6 +11,14 @@
   "creationMethod": "fork",
   "createdAt": "2026-05-23T16:22:20+0300",
   "updatedAt": "2026-05-23T16:22:20+0300",
+  "inspirations": [
+    {
+      "name": "muninndb",
+      "repo": "https://github.com/scrypster/muninndb",
+      "description": "MuninnDB server — Go binary with REST/SSE/MCP APIs that this extension connects to",
+      "license": "MIT"
+    }
+  ],
   "localEnhancements": [],
   "updates": []
 }
