@@ -12,26 +12,56 @@ import { resolveVaultName } from "./vault";
 //    toward muninn_remember_batch when 2+ consecutive calls are made
 // ============================================================
 
-// Allowlist of known MuninnDB MCP tools (prefixed with muninndb_muninn_ via pi-mcp-adapter)
+// All 39 MuninnDB MCP tools (prefixed with muninndb_muninn_ via pi-mcp-adapter).
+// Keep in sync with upstream's internal/mcp/context.go registration list.
 const MUNINN_TOOLS = new Set([
+  // Core read/write
   "muninndb_muninn_remember",
+  "muninndb_muninn_remember_batch",
   "muninndb_muninn_recall",
-  "muninndb_muninn_decide",
+  "muninndb_muninn_read",
+  "muninndb_muninn_forget",
+  "muninndb_muninn_restore",
+  "muninndb_muninn_where_left_off",
+  // Evolution & consolidation
   "muninndb_muninn_evolve",
   "muninndb_muninn_consolidate",
-  "muninndb_muninn_contradictions",
-  "muninndb_muninn_where_left_off",
-  "muninndb_muninn_guide",
-  "muninndb_muninn_remember_batch",
-  "muninndb_muninn_status",
-  "muninndb_muninn_health",
-  "muninndb_muninn_read",
+  "muninndb_muninn_decide",
+  "muninndb_muninn_state",
+  // Linking & traversal
   "muninndb_muninn_link",
-  "muninndb_muninn_unlink",
-  "muninndb_muninn_search",
-  "muninndb_muninn_delete",
-  "muninndb_muninn_list",
-  "muninndb_muninn_summary",
+  "muninndb_muninn_traverse",
+  "muninndb_muninn_explain",
+  // Trees
+  "muninndb_muninn_remember_tree",
+  "muninndb_muninn_recall_tree",
+  "muninndb_muninn_add_child",
+  // Entities
+  "muninndb_muninn_entity",
+  "muninndb_muninn_entities",
+  "muninndb_muninn_find_by_entity",
+  "muninndb_muninn_entity_state",
+  "muninndb_muninn_entity_state_batch",
+  "muninndb_muninn_entity_timeline",
+  "muninndb_muninn_entity_clusters",
+  "muninndb_muninn_similar_entities",
+  "muninndb_muninn_merge_entity",
+  "muninndb_muninn_export_graph",
+  // Enrichment
+  "muninndb_muninn_retry_enrich",
+  "muninndb_muninn_get_enrichment_candidates",
+  "muninndb_muninn_apply_enrichment",
+  "muninndb_muninn_replay_enrichment",
+  // Quality & trust
+  "muninndb_muninn_contradictions",
+  "muninndb_muninn_feedback",
+  "muninndb_muninn_trust",
+  "muninndb_muninn_provenance",
+  "muninndb_muninn_list_deleted",
+  // Session & meta
+  "muninndb_muninn_status",
+  "muninndb_muninn_session",
+  "muninndb_muninn_guide",
 ]);
 
 // Track individual muninn_remember calls per turn for batch nudge
@@ -54,10 +84,28 @@ export function registerVaultInjection(pi: ExtensionAPI): void {
     if (!MUNINN_TOOLS.has(event.toolName)) return;
     if (!event.input) return;
 
-    // Inject vault from cwd if the caller didn't specify one
     const input = event.input as Record<string, unknown>;
+
+    // Inject vault from cwd if the caller didn't specify one
     if (!input.vault) {
       event.input = { ...input, vault: resolveVaultName(process.cwd()) };
+    }
+
+    // Auto-inject annotate: true on recall calls so agents get
+    // staleness/conflict/trust metadata without remembering the flag
+    // Also inject a feedback hint — recall is the main retrieval path
+    // and agents should know about muninn_feedback for quality scoring.
+    if (event.toolName === "muninndb_muninn_recall" && input.annotate !== true) {
+      event.input = { ...event.input, annotate: true };
+      return {
+        message: {
+          customType: "muninn_recall_hint",
+          content:
+            "💡 After using recall results, consider sending muninndb_muninn_feedback " +
+            "with useful=true/false to help the vault learn better scoring weights.",
+          display: false,
+        },
+      };
     }
 
     // Batch nudge: count individual muninn_remember calls

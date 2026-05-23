@@ -15,6 +15,8 @@ function startSSESubscription(vault: string, signal: AbortSignal, onPush: (push:
       for await (const push of client.subscribe(vault, signal)) {
         if (push.trigger === "contradiction_detected") {
           onPush(push);
+        } else if (push.trigger === "threshold_crossed" && push.engram && push.score != null) {
+          onPush(push);
         } else if (push.trigger === "new_write" && push.engram && push.score != null && push.score >= 0.7) {
           onPush(push);
         }
@@ -83,7 +85,9 @@ export default function registerLifecycleHooks(pi: ExtensionAPI) {
     if (pendingPushes.length === 0) return;
 
     const relevant = pendingPushes
-      .filter((p) => p.trigger === "new_write" || p.trigger === "contradiction_detected")
+      .filter(
+        (p) => p.trigger === "new_write" || p.trigger === "contradiction_detected" || p.trigger === "threshold_crossed",
+      )
       .slice(0, 3);
     if (relevant.length === 0) return;
 
@@ -95,6 +99,12 @@ export default function registerLifecycleHooks(pi: ExtensionAPI) {
             `${p.why ?? "New information conflicts with existing memory"}. ` +
             `Use muninndb_muninn_evolve(id="${p.engram.id}", ...) to update it, ` +
             `or muninndb_muninn_consolidate to merge.`
+          );
+        }
+        if (p.trigger === "threshold_crossed" && p.engram) {
+          return (
+            `[📈 Activation signal]: "${p.engram.concept}" (score: ${p.score?.toFixed(2)}) — ` +
+            `this memory's activation score crossed the subscription threshold. `
           );
         }
         return `[Memory Update]: ${p.engram?.concept}: ${p.engram?.content}`;

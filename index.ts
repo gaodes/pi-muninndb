@@ -168,9 +168,7 @@ export default function (pi: ExtensionAPI) {
 
       const output = [result.stdout.trim(), result.stderr.trim()].filter(Boolean).join("\n");
       ctx.ui.notify(
-        result.code === 0
-          ? output || "muninn-test completed"
-          : output || `muninn-test exited with code ${result.code}`,
+        result.code === 0 ? output || "muninn-test completed" : output || `muninn-test exited with code ${result.code}`,
         result.code === 0 ? "info" : "warning",
       );
     },

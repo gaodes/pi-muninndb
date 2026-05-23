@@ -86,7 +86,11 @@ async function restGet(path: string): Promise<{ status: number; body: unknown }>
   const res = await fetch(url);
   const text = await res.text();
   let body: unknown;
-  try { body = JSON.parse(text); } catch { body = text; }
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = text;
+  }
   return { status: res.status, body };
 }
 
@@ -100,7 +104,11 @@ async function restPost(path: string, payload: unknown): Promise<{ status: numbe
   });
   const text = await res.text();
   let body: unknown;
-  try { body = JSON.parse(text); } catch { body = text; }
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = text;
+  }
   return { status: res.status, body };
 }
 
@@ -114,7 +122,11 @@ async function restPut(path: string, payload: unknown): Promise<{ status: number
   });
   const text = await res.text();
   let body: unknown;
-  try { body = JSON.parse(text); } catch { body = text; }
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = text;
+  }
   return { status: res.status, body };
 }
 
@@ -124,7 +136,11 @@ async function restDel(path: string): Promise<{ status: number; body: unknown }>
   const res = await fetch(url, { method: "DELETE" });
   const text = await res.text();
   let body: unknown;
-  try { body = JSON.parse(text); } catch { body = text; }
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = text;
+  }
   return { status: res.status, body };
 }
 
@@ -193,7 +209,7 @@ async function mcpInitialize(): Promise<void> {
       id: 0,
     }),
   });
-  const json = await res.json() as { result?: { serverInfo?: { name?: string } } };
+  const json = (await res.json()) as { result?: { serverInfo?: { name?: string } } };
   if (!json.result?.serverInfo?.name) {
     throw new Error("MCP initialize failed");
   }
@@ -206,11 +222,13 @@ function assert(condition: boolean, msg: string): void {
 }
 
 function assertEq(actual: unknown, expected: unknown, label: string): void {
-  if (actual !== expected) throw new Error(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  if (actual !== expected)
+    throw new Error(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
 }
 
 function assertIncludes(arr: unknown[], item: unknown, label: string): void {
-  if (!arr.includes(item)) throw new Error(`${label}: expected array to include ${JSON.stringify(item)}, got ${JSON.stringify(arr)}`);
+  if (!arr.includes(item))
+    throw new Error(`${label}: expected array to include ${JSON.stringify(item)}, got ${JSON.stringify(arr)}`);
 }
 
 function getField(obj: unknown, field: string): unknown {
@@ -256,9 +274,7 @@ async function testCRUD(): Promise<void> {
       content: "Test memory for CRUD verification",
       tags: [TEST_TAG],
       type: "fact",
-      entities: [
-        { name: "MuninnTest", type: "test_entity" },
-      ],
+      entities: [{ name: "MuninnTest", type: "test_entity" }],
     });
     assertEq(status, 201, "status");
     const id = getField(body, "id") as string;
@@ -431,13 +447,13 @@ async function testMcpConnection(): Promise<void> {
   });
 
   await runTest("MCP muninn_status — vault health", async () => {
-    const result = await mcpCall("muninn_status") as Record<string, unknown>;
+    const result = (await mcpCall("muninn_status")) as Record<string, unknown>;
     assertEq(getField(result, "health"), "good", "health");
     assert(typeof getField(result, "total_memories") === "number", "total_memories should be a number");
   });
 
   await runTest("MCP muninn_where_left_off — session context", async () => {
-    const result = await mcpCall("muninn_where_left_off", { limit: 3 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_where_left_off", { limit: 3 })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
     assert(Array.isArray(getField(result, "memories")), "memories should be an array");
   });
@@ -447,45 +463,51 @@ async function testMcpEntityOperations(): Promise<void> {
   console.log("\n🏷️ Test 6: Entity Operations");
 
   await runTest("MCP muninn_entities — list entities", async () => {
-    const result = await mcpCall("muninn_entities", { limit: 5 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_entities", { limit: 5 })) as Record<string, unknown>;
     assert(typeof getField(result, "count") === "number", "count should be a number");
     assert(Array.isArray(getField(result, "entities")), "entities should be an array");
   });
 
   await runTest("MCP muninn_entity — single entity detail", async () => {
-    const result = await mcpCall("muninn_entity", { name: "MuninnTest", limit: 3 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_entity", { name: "MuninnTest", limit: 3 })) as Record<string, unknown>;
     // Entity may or may not exist yet (depends on REST test ordering)
     // Just verify the call succeeds and returns structured data
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_find_by_entity — search by entity", async () => {
-    const result = await mcpCall("muninn_find_by_entity", { entity_name: "MuninnTest", limit: 5 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_find_by_entity", { entity_name: "MuninnTest", limit: 5 })) as Record<
+      string,
+      unknown
+    >;
     assert(typeof result === "object", "should return an object");
     assert(Array.isArray(getField(result, "engrams")), "engrams should be an array");
   });
 
   await runTest("MCP muninn_entity_timeline — entity history", async () => {
-    const result = await mcpCall("muninn_entity_timeline", { entity_name: "MuninnTest", limit: 5 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_entity_timeline", { entity_name: "MuninnTest", limit: 5 })) as Record<
+      string,
+      unknown
+    >;
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_entity_state — set entity state", async () => {
-    const result = await mcpCall("muninn_entity_state", {
+    const result = (await mcpCall("muninn_entity_state", {
       entity_name: "MuninnTest",
       state: "active",
       type: "test_entity",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_entity_clusters — co-occurrence pairs", async () => {
-    const result = await mcpCall("muninn_entity_clusters", { top_n: 5 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_entity_clusters", { top_n: 5 })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_similar_entities — duplicate detection", async () => {
-    const result = await mcpCall("muninn_similar_entities", { top_n: 5 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_similar_entities", { top_n: 5 })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 }
@@ -498,62 +520,62 @@ async function testMcpGraphOperations(): Promise<void> {
   let idB = "";
 
   await runTest("MCP muninn_remember — create engram A for linking", async () => {
-    const result = await mcpCall("muninn_remember", {
+    const result = (await mcpCall("muninn_remember", {
       concept: `${TEST_PREFIX}link_src`,
       content: "Source engram for link test",
       tags: [TEST_TAG],
       type: "fact",
       entities: [{ name: "MuninnTestLinkSrc", type: "test_entity" }],
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     idA = getField(result, "id") as string;
     assert(typeof idA === "string" && idA.length > 0, "should return an ID");
     mcpCreatedIds.push(idA);
   });
 
   await runTest("MCP muninn_remember — create engram B for linking", async () => {
-    const result = await mcpCall("muninn_remember", {
+    const result = (await mcpCall("muninn_remember", {
       concept: `${TEST_PREFIX}link_dst`,
       content: "Target engram for link test",
       tags: [TEST_TAG],
       type: "fact",
       entities: [{ name: "MuninnTestLinkDst", type: "test_entity" }],
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     idB = getField(result, "id") as string;
     assert(typeof idB === "string" && idB.length > 0, "should return an ID");
     mcpCreatedIds.push(idB);
   });
 
   await runTest("MCP muninn_link — create association", async () => {
-    const result = await mcpCall("muninn_link", {
+    const result = (await mcpCall("muninn_link", {
       source_id: idA,
       target_id: idB,
       relation: "supports",
       weight: 0.8,
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return a result");
   });
 
   await runTest("MCP muninn_traverse — graph traversal from engram", async () => {
-    const result = await mcpCall("muninn_traverse", {
+    const result = (await mcpCall("muninn_traverse", {
       start_id: idA,
       max_hops: 2,
       max_nodes: 10,
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_explain — score explanation", async () => {
-    const result = await mcpCall("muninn_explain", {
+    const result = (await mcpCall("muninn_explain", {
       engram_id: idA,
       query: ["MuninnTest link"],
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_export_graph — graph export", async () => {
-    const result = await mcpCall("muninn_export_graph", {
+    const result = (await mcpCall("muninn_export_graph", {
       format: "json-ld",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 }
@@ -564,38 +586,38 @@ async function testMcpMemoryOperations(): Promise<void> {
   let testId = "";
 
   await runTest("MCP muninn_remember — create test engram", async () => {
-    const result = await mcpCall("muninn_remember", {
+    const result = (await mcpCall("muninn_remember", {
       concept: `${TEST_PREFIX}mcp_ops`,
       content: "Test engram for MCP-only operations",
       tags: [TEST_TAG],
       type: "fact",
       entities: [{ name: "MuninnTestOps", type: "test_entity" }],
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     testId = getField(result, "id") as string;
     assert(typeof testId === "string" && testId.length > 0, "should return an ID");
     mcpCreatedIds.push(testId);
   });
 
   await runTest("MCP muninn_read — read by ID", async () => {
-    const result = await mcpCall("muninn_read", { id: testId }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_read", { id: testId })) as Record<string, unknown>;
     assertEq(getField(result, "id"), testId, "id");
     assertEq(getField(result, "concept"), `${TEST_PREFIX}mcp_ops`, "concept");
   });
 
   await runTest("MCP muninn_recall — semantic search", async () => {
-    const result = await mcpCall("muninn_recall", {
+    const result = (await mcpCall("muninn_recall", {
       context: ["MuninnTestOps test"],
       limit: 5,
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return a result");
   });
 
   await runTest("MCP muninn_evolve — update content", async () => {
-    const result = await mcpCall("muninn_evolve", {
+    const result = (await mcpCall("muninn_evolve", {
       id: testId,
       new_content: "Evolved content via MCP test",
       reason: "Automated MCP test",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     const newId = getField(result, "id") as string;
     if (newId) {
       mcpCreatedIds.push(newId);
@@ -607,26 +629,26 @@ async function testMcpMemoryOperations(): Promise<void> {
 
   await runTest("MCP muninn_consolidate — merge memories", async () => {
     // Create two memories to merge
-    const r1 = await mcpCall("muninn_remember", {
+    const r1 = (await mcpCall("muninn_remember", {
       concept: `${TEST_PREFIX}merge_a`,
       content: "First memory to merge",
       tags: [TEST_TAG],
       type: "fact",
-    }) as Record<string, unknown>;
-    const r2 = await mcpCall("muninn_remember", {
+    })) as Record<string, unknown>;
+    const r2 = (await mcpCall("muninn_remember", {
       concept: `${TEST_PREFIX}merge_b`,
       content: "Second memory to merge",
       tags: [TEST_TAG],
       type: "fact",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     const id1 = getField(r1, "id") as string;
     const id2 = getField(r2, "id") as string;
     mcpCreatedIds.push(id1, id2);
 
-    const result = await mcpCall("muninn_consolidate", {
+    const result = (await mcpCall("muninn_consolidate", {
       ids: [id1, id2],
       merged_content: "Consolidated: both merge test memories combined",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return a result");
     // Consolidated creates new, archives originals
     const mergedId = getField(result, "id") as string;
@@ -639,20 +661,20 @@ async function testMcpMemoryOperations(): Promise<void> {
   });
 
   await runTest("MCP muninn_state — lifecycle state change", async () => {
-    const result = await mcpCall("muninn_state", {
+    const result = (await mcpCall("muninn_state", {
       id: testId,
       state: "active",
       reason: "MCP test state change",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return a result");
   });
 
   await runTest("MCP muninn_decide — record decision via MCP", async () => {
-    const result = await mcpCall("muninn_decide", {
+    const result = (await mcpCall("muninn_decide", {
       decision: `${TEST_PREFIX}mcp_decision`,
       rationale: "MCP test decision",
       alternatives: ["skip"],
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return a result");
     const id = getField(result, "id") as string;
     if (id) mcpCreatedIds.push(id);
@@ -665,7 +687,7 @@ async function testMcpTreeOperations(): Promise<void> {
   let rootId = "";
 
   await runTest("MCP muninn_remember_tree — create hierarchy", async () => {
-    const result = await mcpCall("muninn_remember_tree", {
+    const result = (await mcpCall("muninn_remember_tree", {
       root: {
         concept: `${TEST_PREFIX}tree_root`,
         content: "Root node of test tree",
@@ -676,7 +698,7 @@ async function testMcpTreeOperations(): Promise<void> {
           { concept: `${TEST_PREFIX}tree_child_2`, content: "Second child", type: "task" },
         ],
       },
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     rootId = getField(result, "root_id") as string;
     assert(typeof rootId === "string" && rootId.length > 0, "should return root_id");
     mcpCreatedIds.push(rootId);
@@ -691,21 +713,21 @@ async function testMcpTreeOperations(): Promise<void> {
 
   await runTest("MCP muninn_recall_tree — retrieve hierarchy", async () => {
     if (!rootId) throw new Error("No root ID from tree creation");
-    const result = await mcpCall("muninn_recall_tree", {
+    const result = (await mcpCall("muninn_recall_tree", {
       root_id: rootId,
       max_depth: 3,
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_add_child — add node to tree", async () => {
     if (!rootId) throw new Error("No root ID for add_child");
-    const result = await mcpCall("muninn_add_child", {
+    const result = (await mcpCall("muninn_add_child", {
       parent_id: rootId,
       concept: `${TEST_PREFIX}tree_child_appended`,
       content: "Appended child node",
       type: "task",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     const childId = getField(result, "id") as string;
     if (childId) mcpCreatedIds.push(childId);
     assert(typeof result === "object", "should return a result");
@@ -720,39 +742,39 @@ async function testMcpEnrichmentAndProvenance(): Promise<void> {
 
   // If no MCP-created ID, create one
   if (!testId) {
-    const r = await mcpCall("muninn_remember", {
+    const r = (await mcpCall("muninn_remember", {
       concept: `${TEST_PREFIX}enrich_test`,
       content: "Enrichment test engram",
       tags: [TEST_TAG],
       type: "fact",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     testId = getField(r, "id") as string;
     mcpCreatedIds.push(testId);
   }
 
   await runTest("MCP muninn_provenance — audit trail", async () => {
-    const result = await mcpCall("muninn_provenance", { id: testId }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_provenance", { id: testId })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_get_enrichment_candidates — pending enrichments", async () => {
-    const result = await mcpCall("muninn_get_enrichment_candidates", { limit: 5 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_get_enrichment_candidates", { limit: 5 })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 
   await runTest("MCP muninn_trust — set trust level", async () => {
-    const result = await mcpCall("muninn_trust", {
+    const result = (await mcpCall("muninn_trust", {
       id: testId,
       trust: "inferred",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return a result");
   });
 
   await runTest("MCP muninn_feedback — record feedback", async () => {
-    const result = await mcpCall("muninn_feedback", {
+    const result = (await mcpCall("muninn_feedback", {
       engram_id: testId,
       useful: true,
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return a result");
   });
 }
@@ -765,21 +787,21 @@ async function testMcpListDeletedAndRestore(): Promise<void> {
 
   await runTest("MCP muninn_forget + muninn_restore — soft-delete and recover", async () => {
     // Create
-    const createResult = await mcpCall("muninn_remember", {
+    const createResult = (await mcpCall("muninn_remember", {
       concept: `${TEST_PREFIX}restore_test`,
       content: "Memory to be forgotten and restored",
       tags: [TEST_TAG],
       type: "fact",
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     testId = getField(createResult, "id") as string;
     assert(typeof testId === "string", "should create an engram");
 
     // Forget
-    const forgetResult = await mcpCall("muninn_forget", { id: testId }) as Record<string, unknown>;
+    const forgetResult = (await mcpCall("muninn_forget", { id: testId })) as Record<string, unknown>;
     assert(typeof forgetResult === "object", "forget should return a result");
 
     // Restore
-    const restoreResult = await mcpCall("muninn_restore", { id: testId }) as Record<string, unknown>;
+    const restoreResult = (await mcpCall("muninn_restore", { id: testId })) as Record<string, unknown>;
     assert(typeof restoreResult === "object", "restore should return a result");
 
     // Now it's active again, track for cleanup
@@ -787,7 +809,7 @@ async function testMcpListDeletedAndRestore(): Promise<void> {
   });
 
   await runTest("MCP muninn_list_deleted — list soft-deleted", async () => {
-    const result = await mcpCall("muninn_list_deleted", { limit: 5 }) as Record<string, unknown>;
+    const result = (await mcpCall("muninn_list_deleted", { limit: 5 })) as Record<string, unknown>;
     assert(typeof result === "object", "should return an object");
   });
 }
@@ -796,7 +818,7 @@ async function testMcpBatchRecall(): Promise<void> {
   console.log("\n📚 Test 12: Batch & Recall (MCP)");
 
   await runTest("MCP muninn_remember_batch — batch create", async () => {
-    const result = await mcpCall("muninn_remember_batch", {
+    const result = (await mcpCall("muninn_remember_batch", {
       memories: [
         {
           concept: `${TEST_PREFIX}batch_mcp_1`,
@@ -811,7 +833,7 @@ async function testMcpBatchRecall(): Promise<void> {
           type: "fact",
         },
       ],
-    }) as Record<string, unknown>;
+    })) as Record<string, unknown>;
     assert(typeof result === "object", "should return a result");
     const batchResults = getField(result, "results") as Array<{ id?: string }>;
     if (Array.isArray(batchResults)) {
@@ -838,7 +860,9 @@ async function cleanup(): Promise<void> {
       const { status } = await restDel(`api/engrams/${id}`);
       if (status === 200) cleaned++;
       else failed++;
-    } catch { failed++; }
+    } catch {
+      failed++;
+    }
   }
 
   // Clean MCP-created IDs via MCP
@@ -846,7 +870,9 @@ async function cleanup(): Promise<void> {
     try {
       await mcpCall("muninn_forget", { id });
       cleaned++;
-    } catch { failed++; }
+    } catch {
+      failed++;
+    }
   }
 
   // Also clean stale test memories from previous runs
@@ -858,10 +884,14 @@ async function cleanup(): Promise<void> {
         try {
           await restDel(`api/engrams/${e.id}`);
           cleaned++;
-        } catch { failed++; }
+        } catch {
+          failed++;
+        }
       }
     }
-  } catch { /* best effort */ }
+  } catch {
+    /* best effort */
+  }
 
   if (verbose || failed > 0) {
     console.log(`  Cleaned ${cleaned} test memories${failed > 0 ? `, ${failed} failed` : ""}`);
@@ -979,8 +1009,7 @@ export async function runTestSuite(argv = process.argv.slice(2)): Promise<void> 
 }
 
 // Run when executed directly
-const isDirect = process.argv[1]?.endsWith("muninn-test.mjs") ||
-  process.argv[1]?.endsWith("muninn-test.ts");
+const isDirect = process.argv[1]?.endsWith("muninn-test.mjs") || process.argv[1]?.endsWith("muninn-test.ts");
 if (isDirect) {
   runTestSuite().catch((err) => {
     console.error(err);

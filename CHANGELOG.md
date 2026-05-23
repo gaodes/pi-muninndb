@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **MUNINN_TOOLS allowlist expanded to all 39 tools** — vault auto-injection now works for every MuninnDB MCP tool, not just the original 18. Previously, tools like `muninn_trust`, `muninn_feedback`, `muninn_entity`, `muninn_traverse`, `muninn_remember_tree`, and 16 others were callable but didn't receive automatic vault resolution.
+
+### Added
+
+- **Auto-inject `annotate: true` on recall** — `muninn_recall` calls now always request retrieval annotations (staleness, conflict, trust metadata) so agents get richer context without needing to remember the flag
+- **`threshold_crossed` SSE trigger handling** — the SSE subscription now surfaces activation score signals when memories cross the subscription threshold, alongside existing `new_write` and `contradiction_detected` events
+- **Post-recall feedback hint** — after each `muninn_recall` call, a subtle hint reminds agents that `muninn_feedback` exists for quality scoring (display: false, visible in context but not intrusive)
+
 ## [1.2.0] - 2026-05-23
 
 ### Added
@@ -29,10 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Test Coverage
 
-| Mode | Tests | Suites | Time |
-|------|-------|--------|------|
-| Fast (REST only) | 16 | Health, CRUD, Batch, Query | ~120ms |
-| Full (REST + MCP) | 49 | + Entity, Graph, Tree, Memory, Enrichment, Restore | ~380ms |
+| Mode              | Tests | Suites                                             | Time   |
+| ----------------- | ----- | -------------------------------------------------- | ------ |
+| Fast (REST only)  | 16    | Health, CRUD, Batch, Query                         | ~120ms |
+| Full (REST + MCP) | 49    | + Entity, Graph, Tree, Memory, Enrichment, Restore | ~380ms |
 
 MCP test suites (full mode only):
 
