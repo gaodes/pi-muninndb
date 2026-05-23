@@ -13,7 +13,8 @@
   "type": "module",
   "main": "dist/index.mjs",
   "bin": {
-    "muninn-dream": "dist/muninn-dream.mjs"
+    "muninn-dream": "dist/muninn-dream.mjs",
+    "muninn-test": "dist/muninn-test.mjs"
   },
   "pi": {
     "extensions": [
@@ -23,7 +24,8 @@
   "scripts": {
     "build:extension": "esbuild index.ts --bundle --format=esm --platform=node --outfile=dist/index.mjs --external:@earendil-works/pi-coding-agent",
     "build:dream": "esbuild src/dream.ts --bundle --format=esm --platform=node --outfile=dist/muninn-dream.mjs --banner:js='#!/usr/bin/env node'",
-    "build": "npm run build:extension && npm run build:dream",
+    "build:test": "esbuild src/test.ts --bundle --format=esm --platform=node --outfile=dist/muninn-test.mjs --banner:js='#!/usr/bin/env node'",
+    "build": "npm run build:extension && npm run build:dream && npm run build:test",
     "prepublishOnly": "npm run build",
     "check": "tsc --noEmit --project tsconfig.json",
     "lint": "eslint .",

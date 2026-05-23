@@ -1,10 +1,33 @@
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 import { DEFAULT_VAULT, MUNINN_REST_URL } from "./vault";
+
+/** Load KEY=VALUE pairs from ~/.muninn/muninn.env into process.env (no overwrites). */
+function loadMuninnEnv(): void {
+  const envPath = join(process.env.HOME || "", ".muninn", "muninn.env");
+  if (!existsSync(envPath)) return;
+  try {
+    const raw = readFileSync(envPath, "utf-8");
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq < 1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const val = trimmed.slice(eq + 1).trim();
+      if (!(key in process.env)) {
+        process.env[key] = val;
+      }
+    }
+  } catch {
+    // Silently ignore — dream will emit its own warning if enrich URL is missing
+  }
+}
+loadMuninnEnv();
 
 export interface DreamOptions {
   vault: string;

@@ -21,6 +21,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
  *   /muninn-remove   — Remove MuninnDB integration (keeps MuninnDB data)
  *   /muninn-vault    — Manage vaults: status, create, unlink
  *   /muninn-dream    — Run dream protocol: consolidate, evolve, enrich memories
+ *   /muninn-test     — Run smoke tests against MuninnDB REST API
  */
 export default function (pi: ExtensionAPI) {
   registerLifecycleHooks(pi);
@@ -141,6 +142,29 @@ export default function (pi: ExtensionAPI) {
         result.code === 0
           ? output || "muninn-dream completed"
           : output || `muninn-dream exited with code ${result.code}`,
+        result.code === 0 ? "info" : "warning",
+      );
+    },
+  });
+
+  pi.registerCommand("muninn-test", {
+    description: "Run smoke tests against MuninnDB REST API",
+    handler: async (_args, ctx) => {
+      const vault = resolveVaultName(process.cwd());
+      const testBin = fileURLToPath(new URL("./dist/muninn-test.mjs", import.meta.url));
+
+      ctx.ui.notify(`🧪 Running muninn-test (vault: "${vault}")`, "info");
+      await ctx.waitForIdle();
+
+      const result = await pi.exec(process.execPath, [testBin, "--vault", vault, "--verbose"], {
+        cwd: process.cwd(),
+      });
+
+      const output = [result.stdout.trim(), result.stderr.trim()].filter(Boolean).join("\n");
+      ctx.ui.notify(
+        result.code === 0
+          ? output || "muninn-test completed"
+          : output || `muninn-test exited with code ${result.code}`,
         result.code === 0 ? "info" : "warning",
       );
     },
