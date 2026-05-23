@@ -148,15 +148,21 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerCommand("muninn-test", {
-    description: "Run smoke tests against MuninnDB REST API",
-    handler: async (_args, ctx) => {
+    description: "Run smoke tests: /muninn-test (fast, REST) or /muninn-test full (REST + MCP)",
+    handler: async (args, ctx) => {
       const vault = resolveVaultName(process.cwd());
       const testBin = fileURLToPath(new URL("./dist/muninn-test.mjs", import.meta.url));
+      const mode = args?.trim() === "full" ? "full" : undefined;
+      const modeLabel = mode ? "FULL (REST + MCP)" : "FAST (REST only)";
 
-      ctx.ui.notify(`🧪 Running muninn-test (vault: "${vault}")`, "info");
+      ctx.ui.notify(`🧪 Running muninn-test ${modeLabel} (vault: "${vault}")`, "info");
       await ctx.waitForIdle();
 
-      const result = await pi.exec(process.execPath, [testBin, "--vault", vault, "--verbose"], {
+      const execArgs = [testBin];
+      if (mode) execArgs.push(mode);
+      execArgs.push("--vault", vault, "--verbose");
+
+      const result = await pi.exec(process.execPath, execArgs, {
         cwd: process.cwd(),
       });
 
