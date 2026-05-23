@@ -1,0 +1,66 @@
+{
+  "name": "@gaodes/pi-muninndb",
+  "version": "1.1.0",
+  "description": "MuninnDB memory provider for Pi — SSE subscription, context injection, vault bridge",
+  "keywords": [
+    "pi-package",
+    "muninndb",
+    "memory",
+    "mcp",
+    "sse",
+    "persistent-memory"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "bin": {
+    "muninn-dream": "dist/muninn-dream.mjs"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "scripts": {
+    "build:extension": "esbuild index.ts --bundle --format=esm --platform=node --outfile=dist/index.mjs --external:@earendil-works/pi-coding-agent",
+    "build:dream": "esbuild src/dream.ts --bundle --format=esm --platform=node --outfile=dist/muninn-dream.mjs --banner:js='#!/usr/bin/env node'",
+    "build": "npm run build:extension && npm run build:dream",
+    "prepublishOnly": "npm run build",
+    "check": "tsc --noEmit --project tsconfig.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --import tsx --test 'tests/**/*.test.ts'"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.72.0",
+    "pi-mcp-adapter": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^25.6.0",
+    "esbuild": "^0.28.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.18.0"
+  },
+  "files": [
+    "index.ts",
+    "dist/",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@gitlab-ssh.elches.dev:2222/agents/primecodex/packages/pi-muninndb.git"
+  },
+  "homepage": "https://github.com/gaodes/pi-muninndb",
+  "license": "MIT"
+}

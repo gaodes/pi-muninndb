@@ -1,0 +1,16 @@
+{
+  "primary": {
+    "name": "@kuyavinny/pi-muninn-mem",
+    "type": "npm",
+    "url": "npm:@kuyavinny/pi-muninn-mem",
+    "repo": "https://github.com/kuyavinny/pi-muninn-mem",
+    "license": "MIT",
+    "relationship": "fork",
+    "upstreamVersion": "1.1.0"
+  },
+  "creationMethod": "fork",
+  "createdAt": "2026-05-23T16:22:20+0300",
+  "updatedAt": "2026-05-23T16:22:20+0300",
+  "localEnhancements": [],
+  "updates": []
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "package",
+  "npm": {
+    "name": "@gaodes/pi-muninndb",
+    "scope": "@gaodes"
+  },
+  "integrationStatus": "none",
+  "createdAt": "2026-05-23T16:22:20+0300",
+  "updatedAt": "2026-05-23T16:22:20+0300"
+}

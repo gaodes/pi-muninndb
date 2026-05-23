@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run check
+
+      - name: Lint and format check
+        run: |
+          npm run lint
+          npm run format:check
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build bundle
+        run: npm run build
+
+      - name: Verify bundles exist, are non-trivial, and syntactically valid
+        run: |
+          for f in dist/index.mjs dist/muninn-dream.mjs; do
+            test -f "$f" || (echo "❌ Bundle not found: $f" && exit 1)
+            SIZE=$(wc -c < "$f")
+            [ "$SIZE" -gt 5000 ] || (echo "❌ Bundle too small ($f): $SIZE bytes" && exit 1)
+            node --check "$f" || (echo "❌ Bundle has syntax errors: $f" && exit 1)
+            echo "✅ Bundle OK ($f): $SIZE bytes"
+          done
+
+      - name: Security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Verify no binaries in package
+        run: |
+          BINARY=$(find . -not -path './node_modules/*' -not -path './.git/*' -type f -size +1M 2>/dev/null | head -1)
+          if [ -n "$BINARY" ]; then
+            echo "❌ Large file found: $BINARY"
+            exit 1
+          fi
+          echo "✅ No binaries in package"
+
+      - name: Verify SHA-256 checksums are present
+        run: |
+          COUNT=$(grep -c 'BINARY_HASHES' src/setup.ts)
+          [ "$COUNT" -gt 0 ] || (echo "❌ No binary checksums found" && exit 1)
+          echo "✅ Binary checksums present"
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to npm with provenance
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,15 @@
+# Dev files
+node_modules/
+tsconfig.json
+.git/
+.gitignore
+.github/
+package-lock.json
+*.ts
+!index.ts
+
+# Include what's needed
+!dist/
+!README.md
+!LICENSE
+!package.json
