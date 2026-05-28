@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-29
+
 ### Added
 
 - **5 new CLI-wrapped commands** — backup, health, dream, import, and upgrade commands now wrap the `muninn` CLI directly instead of custom reimplementations
@@ -19,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auto-inject `annotate: true` on recall** — `muninn_recall` calls now always request retrieval annotations (staleness, conflict, trust metadata) so agents get richer context without needing to remember the flag
 - **`threshold_crossed` SSE trigger handling** — the SSE subscription now surfaces activation score signals when memories cross the subscription threshold, alongside existing `new_write` and `contradiction_detected` events
 - **Post-recall feedback hint** — after each `muninn_recall` call, a subtle hint reminds agents that `muninn_feedback` exists for quality scoring
+
+### Changed
+
+- **Setup now uses official MuninnDB install script** instead of direct binary download + Docker/Podman fallback:
+  - macOS/Linux: downloads and runs `https://muninndb.com/install.sh`
+  - Windows: downloads and runs `https://muninndb.com/install.ps1`
+  - Binary search now includes `~/.local/bin/muninn` (the official install location)
+  - Removed container port checks (8575/8850), SHA-256 verification, `BIN_DIR`, `getPlatformBinary`, `hasContainerRuntime`, `verifyChecksum`
 
 ### Fixed
 

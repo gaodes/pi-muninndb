@@ -25,7 +25,7 @@ export default ts.config(
     },
   },
   {
-    ignores: ["node_modules/**", "dist/**", "dist-tests/**", ".github/**", ".pi/**"],
+    ignores: ["node_modules/**", "dist/**", "dist-tests/**", ".github/**", ".pi/**", "muninndb-upstream/**"],
   },
   prettier,
 );

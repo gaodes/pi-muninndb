@@ -10,7 +10,7 @@
   },
   "creationMethod": "fork",
   "createdAt": "2026-05-23T16:22:20+0300",
-  "updatedAt": "2026-05-23T22:00:00+0300",
+  "updatedAt": "2026-05-29T17:30:00+0300",
   "inspirations": [
     {
       "name": "muninndb",
@@ -39,7 +39,18 @@
       "date": "2026-05-23",
       "description": "Full README rewrite for @gaodes/pi-muninndb identity, commands, test documentation, and architecture",
       "files": ["README.md"]
+    },
+    {
+      "date": "2026-05-29",
+      "description": "Refactor setup flow: remove Docker/Podman container fallback, direct binary download with SHA-256 verification, and container port checks. Replace with official MuninnDB install script (install.sh / install.ps1). Binary search now includes ~/.local/bin/muninn.",
+      "files": ["src/setup.ts", "tests/setup.test.ts", "README.md", "CHANGELOG.md"]
     }
   ],
-  "updates": []
+  "updates": [
+    {
+      "date": "2026-05-29T17:30:00+0300",
+      "description": "Refactor setup: remove Docker/Podman fallback, direct binary download with SHA-256 verification, and container ports. Replace with official MuninnDB install script (muninndb.com/install.sh or install.ps1). Update README, CHANGELOG, and tests accordingly.",
+      "type": "refactor"
+    }
+  ]
 }

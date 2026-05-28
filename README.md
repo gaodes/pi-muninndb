@@ -22,7 +22,7 @@ Then reload Pi and run:
 This single command handles everything:
 
 1. Checks that `pi-mcp-adapter` is installed
-2. Downloads and installs MuninnDB binary (with SHA-256 verification) if not found
+2. Runs the official MuninnDB install script if the binary is not found
 3. Starts MuninnDB
 4. Writes MCP config to `~/.config/mcp/mcp.json`
 5. Adds MuninnDB instructions to `~/.pi/agent/AGENTS.md` (non-destructive)
@@ -46,10 +46,10 @@ If MuninnDB isn't running when Pi starts, you'll see:
 | `/muninn-dream`               | Run dream protocol: consolidate, evolve, enrich memories (offline) |
 | `/muninn-test`                | Fast smoke test — 16 REST API tests in ~120ms                      |
 | `/muninn-test full`           | Full smoke test — 49 tests covering all 39 MCP tools in ~380ms     |
-| `/muninn-backup`              | Export vault archive + offline data backup                          |
-| `/muninn-health`              | Show server status, vault stats, service ports                      |
-| `/muninn-import`              | Import a `.muninn` backup archive into a vault                      |
-| `/muninn-upgrade`             | Check for and install MuninnDB updates                              |
+| `/muninn-backup`              | Export vault archive + offline data backup                         |
+| `/muninn-health`              | Show server status, vault stats, service ports                     |
+| `/muninn-import`              | Import a `.muninn` backup archive into a vault                     |
+| `/muninn-upgrade`             | Check for and install MuninnDB updates                             |
 
 ## How It Works
 
@@ -272,10 +272,6 @@ Models are never auto-pulled — you must install them explicitly.
 
 ## Security
 
-- Downloaded binaries are verified with SHA-256 checksums before execution
-- Docker/Podman ports bound to `127.0.0.1` only (no network exposure)
-- Docker image pinned to `v0.5.1` (no `:latest`)
-- MuninnDB initialized with a generated authentication token
 - MCP config URLs validated as localhost-only with known ports
 - File writes are atomic (temp + rename)
 - All command execution uses argument arrays (no shell interpolation)
