@@ -1,6 +1,6 @@
 {
   "name": "@gaodes/pi-muninndb",
-  "version": "1.3.0",
+  "version": "1.4.1",
   "description": "MuninnDB memory provider for Pi — SSE subscription, context injection, vault bridge",
   "keywords": [
     "pi-package",

@@ -49,15 +49,26 @@ const AGENTS_MD_SECTION = `# Memory: MuninnDB
 
 You have persistent memory via MuninnDB. Use it actively — never rely on local or session-only memory.
 
-## Session Start — Always
+## Session Start — Automatic
 
-Before beginning any work, call \`muninndb_muninn_where_left_off\` (via mcp) to load context from the previous session.
-This is unconditional — not "if relevant" but "always, before beginning any work."
+The pi-muninndb extension **automatically pre-fetches recent memories at session start** and injects them as context before your first turn. You do not need to call \`muninndb_muninn_where_left_off\` manually on every session — the extension handles it.
+
+If you need to search by topic, use \`muninndb_muninn_recall\` with relevant context phrases.
+
+## Vault: Automatic Resolution
+
+The vault is resolved automatically from the working directory:
+
+- Project directory (.git, package.json, etc.) → vault named after the directory basename
+- Non-project directory → \`default\` vault
+- Explicit mapping → \`/muninn-vault create [name]\`
+
+**Do not pass a \`vault\` parameter.** The \`tool_call\` hook auto-injects the resolved vault on every \`muninndb_muninn_*\` call. Run \`/muninn-vault status\` to inspect the current vault and resolution method.
 
 ## Save Protocol
 
-1. **ASSESS** — Before saving anything from this turn, review the entire exchange and identify ALL memories worth saving.
-2. **CHOOSE** — Based on the count:
+1. **ASSESS** — Before saving, review the exchange and identify all memories worth saving.
+2. **CHOOSE** — Based on count:
    - 1 memory → \`muninndb_muninn_remember\`
    - 2+ memories → \`muninndb_muninn_remember_batch\`
 3. **SAVE** — Execute once. Never make two consecutive \`muninndb_muninn_remember\` calls.
@@ -71,56 +82,64 @@ If you catch yourself about to make a second \`muninndb_muninn_remember\` call, 
 - **Issues**: "Service X fails on port 8080" → type=issue
 - **Procedures**: "To deploy, run these steps..." → type=procedure
 - **Facts**: "The API returns 429 on rate limits" → type=fact
+- **Release events**: published packages, migrations, audits → type=event
 
 ### What NOT to Save
 
 - Greetings, acknowledgments, "let me check", "I'll do that"
 - Raw tool output (bash, read, edit, write)
 - Meta-discussion about the conversation itself
-- Information you're not confident about
+- Information you are not confident about
+
+## Lifecycle Checkpoints
+
+After significant events, save memories immediately — do not wait until end of session:
+
+- After a **git commit** → save commit intent and what changed
+- After an **npm publish** → save the release event with version and what shipped
+- After a **significant decision** → save the decision, rationale, and alternatives
+- After **resolving a blocker** → save the issue closed and how it was fixed
+
+The extension injects a checkpoint reminder after \`git_commit_execute\`, \`git_push\`, and \`git_tag\` calls.
 
 ## Tools Available
 
-All 39 MuninnDB tools are available via the \`mcp\` gateway with prefix \`muninndb_muninn_*\`.
-Call them using the \`mcp\` function, e.g.: \`mcp({ tool: "muninndb_muninn_where_left_off" })\`
+39 MuninnDB tools are available directly as \`muninndb_muninn_*\` — no \`mcp()\` wrapper needed.
 
 | Tool | Purpose |
 |------|---------|
-| \`muninndb_muninn_where_left_off\` | Restore context from last session — **call this first** |
+| \`muninndb_muninn_where_left_off\` | Fetch most recently accessed memories |
 | \`muninndb_muninn_recall\` | Semantic search for relevant memories |
-| \`muninndb_muninn_remember\` | Store a fact, decision, preference, or observation |
+| \`muninndb_muninn_remember\` | Store a single fact, decision, preference, or issue |
+| \`muninndb_muninn_remember_batch\` | Store multiple memories at once (preferred for 2+) |
 | \`muninndb_muninn_decide\` | Record a decision with rationale and evidence |
-| \`muninndb_muninn_remember_batch\` | Store multiple memories at once (max 50) |
 | \`muninndb_muninn_evolve\` | Update a memory with new information |
 | \`muninndb_muninn_consolidate\` | Merge related memories |
 | \`muninndb_muninn_contradictions\` | Check for known contradictions |
 | \`muninndb_muninn_guide\` | Get vault-specific usage instructions |
 
-## Vault Strategy
-
-Vaults are created automatically on first write. Use /muninn-vault to manage them:
-
-- /muninn-vault status — Show current vault and mapping
-- /muninn-vault create [name] — Link current directory to a vault
-- /muninn-vault unlink — Remove vault mapping for current directory
-
-When in a project directory (has .git, package.json, etc.), the vault name is derived from the directory basename. Otherwise, the 'default' vault is used.
-
 ## Contradiction Detection
 
-When you see a \`[⚠️ Contradiction detected]\` message, use \`muninndb_muninn_evolve\` to update the older memory or \`muninndb_muninn_consolidate\` to merge them.
+When you see a \`[⚠️ Contradiction detected]\` message, use \`muninndb_muninn_evolve\` to update the older memory, or \`muninndb_muninn_consolidate\` to merge them.
 
 ## Dream Protocol
 
-Run \`/muninn-dream\` before ending a session to consolidate and enrich memories:
+Run \`/muninn-dream\` before ending a long session to consolidate memories offline via the MuninnDB CLI:
 
-1. \`muninndb_muninn_contradictions\` — Find and resolve contradictions
-2. \`muninndb_muninn_recall(mode=recent, limit=20)\` — Review recent memories for overlaps or outdated info
-3. \`muninndb_muninn_consolidate\` overlapping memories, \`muninndb_muninn_evolve\` outdated ones
-4. \`muninndb_muninn_get_enrichment_candidates\` — Find memories missing summaries or entities
-5. \`muninndb_muninn_apply_enrichment\` — Add missing summaries and entities
-6. \`muninndb_muninn_decide\` — Record any decisions made this session
-7. \`muninndb_muninn_where_left_off\` — Save session state for next time`;
+1. Finds and resolves contradictions
+2. Consolidates overlapping memories
+3. Enriches memories missing summaries or entities
+4. Reviews and evolves outdated facts
+
+## Testing and Health
+
+- \`/muninn-health\` — Server status, vault stats, service ports
+- \`/muninn-test\` — Fast REST smoke tests (use \`/muninn-test full\` for REST + all 39 MCP tools)
+  - **Note**: pass \`--vault default\` (or any vault without an API key) for the tests to pass
+- \`/muninn-backup\` — Export vault archive
+- \`/muninn-upgrade\` — Check for and install MuninnDB updates
+
+`;
 
 // ─── Setup Function ────────────────────────────────────────────────
 export async function setupMuninnDB(ctx: ExtensionContext): Promise<void> {
