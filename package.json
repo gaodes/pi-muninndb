@@ -1,6 +1,6 @@
 {
   "name": "@gaodes/pi-muninndb",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "MuninnDB memory provider for Pi — SSE subscription, context injection, vault bridge",
   "keywords": [
     "pi-package",
@@ -40,8 +40,12 @@
     "pi-mcp-adapter": ">=1.0.0"
   },
   "peerDependenciesMeta": {
-    "@earendil-works/pi-coding-agent": { "optional": true },
-    "pi-mcp-adapter": { "optional": true }
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "pi-mcp-adapter": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

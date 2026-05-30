@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.4.2] - 2026-05-31
+
+### Fixed
+
+- **`.primecodex.json` populated** — added `kind`, `source`, `description`, `topic`, `npm`, and `integrationStatus` fields; previously all strings were empty, breaking catalog discoverability
+- **`repository.url` corrected** — changed from GitLab SSH to `https://github.com/gaodes/pi-muninndb` so npm's package page links to the public mirror
+- **`peerDependenciesMeta` added** — `@earendil-works/pi-coding-agent` and `pi-mcp-adapter` now marked `optional: true` to suppress spurious npm peer dependency warnings
+- **Empty `[1.4.0]` changelog entry removed** — that version had no content; `[1.4.1]` immediately followed with the real changes
+- **Undocumented Pi event hook casts annotated** — added explanatory comments for `pi.on("context" as any)` and `(pi as any).on("tool_call")` noting version risk
+- **`homedir()` usage justified** — added file-level comment in `src/vault.ts` explaining why direct `~/.muninn/` path access is correct for a MuninnDB service integration
+
 ## [1.4.1] - 2026-05-29
 
 ### Fixed
