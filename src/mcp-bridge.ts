@@ -67,6 +67,10 @@ const MUNINN_TOOLS = new Set([
 // Track individual muninn_remember calls per turn for batch nudge
 let individualRememberCount = 0;
 
+// Tools that indicate significant "save-worthy" work just completed.
+// The tool_call hook fires for all Pi tools, not only MCP tools.
+const CHECKPOINT_TOOLS = new Set(["git_commit_execute", "git_push", "git_tag"]);
+
 /**
  * Registers tool_call hooks for MuninnDB MCP tools:
  * 1. Vault injection — adds per-project vault to tool calls
@@ -79,7 +83,29 @@ export function registerVaultInjection(pi: ExtensionAPI): void {
     individualRememberCount = 0;
   });
 
+  // NOTE: "tool_call" is an undocumented Pi event not in the public ExtensionAPI
+  // type definitions. It fires before each tool call, allowing param injection
+  // and side-channel messages. The cast to `any` bypasses the type contract.
+  // If Pi changes or removes this event, vault injection and checkpoint hints
+  // will silently stop working — test after each Pi update.
   (pi as any).on("tool_call", async (event: any, _ctx: any) => {
+    // Post-commit/push checkpoint: remind the LLM to save memories after
+    // significant git operations. Fires best-effort — only if tool_call
+    // hook fires for Pi native tools (not just MCP tools).
+    if (CHECKPOINT_TOOLS.has(event.toolName)) {
+      const vault = resolveVaultName(process.cwd());
+      return {
+        message: {
+          customType: "muninn_checkpoint_hint",
+          content:
+            `Checkpoint (${event.toolName}): if this operation involved meaningful decisions, ` +
+            `discoveries, or changes, save them now with ` +
+            `muninndb_muninn_remember_batch(vault="${vault}", memories=[...]).`,
+          display: false,
+        },
+      };
+    }
+
     // Only intercept known MuninnDB MCP tools (allowlist, not prefix match)
     if (!MUNINN_TOOLS.has(event.toolName)) return;
     if (!event.input) return;

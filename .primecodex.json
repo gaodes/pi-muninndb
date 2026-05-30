@@ -1,7 +1,13 @@
 {
-  "source": "",
-  "description": "",
-  "topic": "",
+  "kind": "package",
+  "source": "@gaodes/pi-muninndb",
+  "description": "MuninnDB memory provider for Pi — SSE subscription, context injection, vault bridge",
+  "topic": "memory",
   "requires": [],
-  "npmPublished": false
+  "npmPublished": true,
+  "npm": {
+    "name": "@gaodes/pi-muninndb",
+    "scope": "@gaodes"
+  },
+  "integrationStatus": "installed"
 }

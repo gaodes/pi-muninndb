@@ -7,6 +7,12 @@
 //
 // The SSE client connects directly to the MuninnDB REST API on port 8475.
 // No port calculation needed — these are fixed by MuninnDB.
+//
+// NOTE: homedir() is used throughout this file and the commands layer to
+// construct paths under ~/.muninn/ — the MuninnDB data directory. This is
+// not an arbitrary config path: ~/.muninn/ is the documented install location
+// for MuninnDB binaries, env files, and vault data. Pi config APIs are not
+// appropriate here because this data belongs to MuninnDB, not to Pi.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
@@ -16,6 +22,7 @@ import { join } from "node:path";
 
 export const DEFAULT_VAULT = "default";
 export const MUNINN_REST_URL = "http://127.0.0.1:8475";
+export const MUNINN_MCP_URL = "http://127.0.0.1:8750/mcp";
 export const PROJECT_MARKERS = [
   ".git",
   "package.json",
