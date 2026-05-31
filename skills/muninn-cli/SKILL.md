@@ -3,15 +3,18 @@ name: muninn-cli
 description: >
   Manage the MuninnDB server and vaults using the muninn CLI. Use when the
   user asks to start, stop, restart, or check MuninnDB; manage vaults (create,
-  delete, clone, export, import, list); manage API keys; run the dream protocol;
-  back up or restore data; upgrade MuninnDB; or configure embedders and LLM
-  enrichment. Also use for any question about ports, data directory layout,
-  service health, or the muninn.env configuration file.
+  delete, clone, export, import, list); manage API keys; run the dream protocol
+  (memory consolidation); back up or restore data; upgrade MuninnDB; or
+  configure embedders and LLM enrichment. Also use for any question about
+  ports, data directory layout, service health, the muninn.env configuration
+  file, or when Pi's MuninnDB memory tools fail to connect. Do not use for
+  storing or recalling memories (use the MuninnDB MCP tools directly) or for
+  editing the pi-muninndb extension's prime-settings.json keys.
 ---
 
 # muninn CLI — MuninnDB Server Management
 
-**Version documented:** v0.6.1  
+**Version documented:** v0.6.1 — if `muninn --version` differs, treat flag spellings as suggestions and run `muninn <subcommand> --help` to confirm.  
 **Binary location:** `~/.local/bin/muninn` (installed via `curl -sSL https://muninndb.com/install.sh | sh`)  
 **Data directory:** `~/.muninn/data/`  
 **Config file:** `~/.muninn/muninn.env`
@@ -35,6 +38,22 @@ The server exposes four ports:
 
 Everything the Pi extension does (vault injection, SSE, MCP tools) flows through these ports. The CLI is how you operate the server itself.
 
+## Pi Extension Commands
+
+**Preference rule:** In a Pi session, prefer the `/muninn-*` slash commands over raw CLI. They handle confirmation prompts, vault marker files, and `prime-settings.json` updates. Fall back to raw `muninn` CLI only when (1) the slash command is not available, (2) the user explicitly asks for the raw command, or (3) you need a flag the slash command does not expose.
+
+| Pi command | Underlying operation |
+|-----------|---------------------|
+| `/muninn-setup` | Interactive install + `muninn init` (tool discovery and config-file scaffolding) |
+| `/muninn-remove` | Remove MuninnDB integration |
+| `/muninn-vault` | `muninn vault list/create/unlink` |
+| `/muninn-dream` | `muninn dream --dry-run` then confirm |
+| `/muninn-backup` | `muninn vault export` + `muninn backup` |
+| `/muninn-health` | REST health check + `muninn status` |
+| `/muninn-import` | `muninn vault import` |
+| `/muninn-upgrade` | `muninn version` + `muninn upgrade` |
+| `/muninn-test` | Direct MCP HTTP tests (no CLI) |
+
 ## Core Operations
 
 ### Server lifecycle
@@ -57,7 +76,7 @@ muninn init --tool claude,cursor --yes   # Non-interactive, specific tools
 muninn init --tool manual --no-token    # Manual config, no MCP token
 ```
 
-`muninn init` auto-detects and configures Claude Desktop, Cursor, Windsurf, VS Code, OpenClaw, and Codex. For Pi, the MCP endpoint (`http://127.0.0.1:8750/mcp`) is configured via `pi-mcp-adapter` — no manual `muninn init` step needed.
+`muninn init` auto-detects and configures Claude Desktop, Cursor, Windsurf, VS Code, OpenClaw, and Codex. For Pi, the MCP endpoint (`http://127.0.0.1:8750/mcp`) is wired by `pi-mcp-adapter`; `muninn init` is still run by `/muninn-setup` for tool discovery and config-file scaffolding.
 
 ### Vault management
 
@@ -78,6 +97,18 @@ muninn vault reindex-fts myvault          # Rebuild full-text search index
 
 Admin flags available on vault commands: `-u <user>`, `-p` or `-p<password>`, `-h <host:port>`.
 
+### ⚠️ Destructive operations — back up first
+
+Always run `muninn vault export --vault <name> -o <archive>.muninn` **before** any of:
+
+- `muninn vault delete --yes`
+- `muninn vault clear --yes`
+- `muninn vault merge <src> <dst>`
+- `muninn dream` (real run — not `--dry-run`)
+- `muninn upgrade` (server data layout can shift across major versions)
+
+Confirm with the user before running any of the above. Never pass `--yes` without an explicit user confirmation in the same turn.
+
 ### API key management
 
 ```bash
@@ -88,7 +119,7 @@ muninn api-key list --vault default        # Keys for one vault
 muninn api-key revoke A1B2C3D4             # Revoke a key immediately
 ```
 
-Access modes: `full` (default — read/write) or `observe` (read-only).
+Access modes: `full` (default — read/write) or `observe` (read-only). No other modes in v0.6.1.
 
 ### One-shot operations without daemon
 
@@ -203,22 +234,6 @@ After editing `muninn.env`, restart for changes to take effect:
 muninn restart
 ```
 
-## Pi Extension Commands
-
-The `@gaodes/pi-muninndb` Pi extension wraps these CLI operations:
-
-| Pi command | Underlying operation |
-|-----------|---------------------|
-| `/muninn-setup` | Interactive install + `muninn init` |
-| `/muninn-remove` | Remove MuninnDB integration |
-| `/muninn-vault` | `muninn vault list/create/unlink` |
-| `/muninn-dream` | `muninn dream --dry-run` then confirm |
-| `/muninn-backup` | `muninn vault export` + `muninn backup` |
-| `/muninn-health` | REST health check + `muninn status` |
-| `/muninn-import` | `muninn vault import` |
-| `/muninn-upgrade` | `muninn version` + `muninn upgrade` |
-| `/muninn-test` | Direct MCP HTTP tests (no CLI) |
-
 ## Common Workflows
 
 ### Pattern 1: New project setup
@@ -238,15 +253,22 @@ muninn api-key create --vault my-project --label pi-agent
 # /muninn-vault create my-project
 ```
 
+**Verify:** `muninn vault list` shows `my-project`; `muninn api-key list --vault my-project` shows the new key label.
+
 ### Pattern 2: Scheduled dream run
 
 ```bash
+# Export vault first (backup before destructive op)
+muninn vault export --vault my-project -o ~/Desktop/my-project-predream.muninn
+
 # Stop server, run dream, restart
 muninn stop
 muninn dream --dry-run --scope my-project   # review first
 muninn dream --scope my-project             # run for real
 muninn start
 ```
+
+**Verify:** `muninn start` then `muninn status` shows all four ports listening; `curl -sf http://127.0.0.1:8475/api/health` returns 200.
 
 ### Pattern 3: Export vault for migration
 
@@ -257,6 +279,8 @@ muninn vault export --vault my-project -o ~/Desktop/my-project-$(date +%Y%m%d).m
 # On new machine: import
 muninn vault import ~/Desktop/my-project-20260531.muninn --vault my-project
 ```
+
+**Verify:** `muninn vault list` on the target machine shows the imported vault; check the expected memory count via the web UI (`http://127.0.0.1:8476`).
 
 ### Pattern 4: Diagnose a failing connection
 
@@ -271,6 +295,8 @@ curl -sf http://127.0.0.1:8750/mcp -X POST \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}' \
   | head -c 200
 ```
+
+**Verify:** REST check returns `{"status":"ok"}` or similar; MCP call returns a JSON-RPC result object with `protocolVersion` in the response.
 
 ## Data Directory Layout
 
@@ -326,3 +352,23 @@ muninn api-key list --vault my-project    # Keys are listed (tokens not shown)
 muninn api-key revoke <key-id>            # Revoke old key
 muninn api-key create --vault my-project --label replacement  # New key
 ```
+
+**Pi MCP tools not connecting (e.g. `muninndb_muninn_recall` failing):**
+```bash
+muninn status             # Check server is up; all ports should show [up]
+muninn logs --no-follow   # Look for auth errors or TLS mismatches
+# Verify the Pi extension has the correct token:
+# /muninn-health (shows server status + vault stats from Pi)
+# /muninn-setup  (re-runs muninn init if wiring is broken)
+```
+
+## Reporting results
+
+When you run a `muninn` command, report back with:
+
+1. **Action taken** — the exact command (one line).
+2. **Outcome** — succeeded / failed / partial, with relevant numbers (vault count, port list, error code).
+3. **Side effects** — what changed on disk or in the running server (e.g., "server restarted", "vault `foo` deleted", "API key `A1B2...` revoked").
+4. **Next step (if any)** — required follow-up (e.g., "restart server for muninn.env changes to apply").
+
+Prefer compact tables for `vault list`, `api-key list`, and `status` output. Trim log output to relevant lines only.
