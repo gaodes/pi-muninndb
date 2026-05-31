@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.4.4] - 2026-05-31
+
+### Fixed
+
+- **`muninn-cli` skill — post-review improvements**: description adds "consolidation" paraphrase, MCP-connection trigger, and explicit "Do not use for" boundary; added "Prefer Pi commands" preference rule; added "Destructive operations — backup first" callout with `--yes` confirmation rule; per-workflow `Verify:` lines added to all four patterns; "Reporting results" section added; init/Pi statement reconciled; MCP-not-connecting troubleshooting pattern added; version-pin made actionable
+
+### Changed
+
+- **`skills/` added to `package.json` `files`** — the `skills/muninn-cli/` directory was absent from the npm tarball in v1.4.3; added `"skills/"` to `files` so the skill ships to consumers
+
 ## [1.4.3] - 2026-05-31
 
 ### Added
