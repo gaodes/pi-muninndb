@@ -14,7 +14,7 @@ import { registerDreamCommand } from "./src/commands/dream";
 import { registerImportCommand } from "./src/commands/import";
 import { registerUpgradeCommand } from "./src/commands/upgrade";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
@@ -33,6 +33,13 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
  *   /muninn-upgrade  — Check for and install MuninnDB updates
  */
 export default function (pi: ExtensionAPI) {
+  // Register skills shipped with this extension
+  pi.on("resources_discover", () => {
+    const extensionDir = dirname(fileURLToPath(import.meta.url));
+    const skillsDir = join(extensionDir, "skills");
+    return { skillPaths: [skillsDir] };
+  });
+
   registerLifecycleHooks(pi);
   registerVaultInjection(pi);
 

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.4.3] - 2026-05-31
+
+### Added
+
+- **`muninn-cli` skill** — in-package Pi skill covering the full `muninn` CLI (v0.6.1). Includes server lifecycle, vault management, API key management, `exec` one-shot operations, dream protocol, backup/restore, upgrade, cluster, configuration (`~/.muninn/muninn.env`), port reference, data directory layout, 4 common workflow patterns, and a troubleshooting section. Registered via `resources_discover` event handler so Pi loads it automatically.
+
 ## [1.4.2] - 2026-05-31
 
 ### Fixed
