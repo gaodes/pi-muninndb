@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.4.5] - 2026-06-05
+
+### Fixed
+
+- **Vault resolution now walks up to the project root** — `resolveVaultName` only inspected the exact launch directory, so Pi sessions started from any sub-directory without a project marker (e.g. `repo/src`, `repo/src/commands`) silently fell back to the `default` vault. Memories from real project work leaked into `default` (363 memories accumulated there, the largest vault). `resolveVaultName` now:
+  - Walks up from the launch directory to the nearest ancestor containing a project marker (`findProjectRootByMarkers`), stopping at the home directory or filesystem root.
+  - Falls back to `git rev-parse --show-toplevel` (`findGitToplevel`) for git repos missed by the marker walk; handles worktrees and submodules.
+  - Preserves the homedir guard so cross-cutting work launched from `~` still resolves to `default` rather than a personal-name vault.
+  - Honors `~/.muninn/vaults.json` mappings for both the launch directory and the resolved project root.
+- The shared sanitizer is now exported as `sanitizeVaultName` from `src/vault.ts`.
+
 ## [1.4.4] - 2026-05-31
 
 ### Fixed

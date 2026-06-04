@@ -16,7 +16,8 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, basename } from "node:path";
+import { execFileSync } from "node:child_process";
 
 // ─── Constants ───────────────────────────────────────────────────────
 
@@ -69,14 +70,72 @@ export function isProjectDirectory(dir: string): boolean {
   return PROJECT_MARKERS.some((marker) => existsSync(join(dir, marker)));
 }
 
+/** Sanitize an arbitrary string into a safe vault name, or "" if empty. */
+export function sanitizeVaultName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .substring(0, 64);
+}
+
+/**
+ * Walk up from `startDir` to the nearest ancestor that contains a project
+ * marker, stopping at the home directory or filesystem root. Returns the
+ * marker directory, or null if none is found before the boundary.
+ *
+ * This is the fix for sub-directory launches: resolving from
+ * `~/repo/pkg/src` now finds `~/repo/pkg` instead of falling to "default".
+ */
+export function findProjectRootByMarkers(startDir: string): string | null {
+  const home = homedir();
+  let dir = startDir;
+  while (dir && dir !== "/" && dir !== home) {
+    if (isProjectDirectory(dir)) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+/**
+ * Resolve the git repository root for `startDir` via
+ * `git rev-parse --show-toplevel`. Returns null when not in a git repo, on
+ * any error, or when the toplevel resolves to the home directory or root
+ * (which would yield a meaningless vault name). Handles worktrees and
+ * submodules correctly since git reports the true working-tree root.
+ */
+export function findGitToplevel(startDir: string): string | null {
+  try {
+    const out = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: startDir,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 1000,
+    }).trim();
+    if (!out || out === homedir() || out === "/") return null;
+    return out;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Vault Resolution ───────────────────────────────────────────────
 
 /**
  * Resolves the vault name using a hybrid strategy:
  *
- * 1. Explicit mapping in ~/.muninn/vaults.json (highest priority)
- * 2. Project marker detection (.git, package.json, etc.)
- * 3. Fallback to "default" for non-project directories
+ * 1. Explicit mapping in ~/.muninn/vaults.json (highest priority) — checked
+ *    for the launch directory and for the resolved project root.
+ * 2. Project marker detection, walking up to the nearest ancestor marker
+ *    (.git, package.json, etc.) — fixes sub-directory launches.
+ * 3. Git toplevel fallback (`git rev-parse --show-toplevel`) for git repos
+ *    whose root is not caught by the marker walk.
+ * 4. Fallback to "default" for non-project directories.
+ *
+ * The home directory and filesystem root always resolve to "default" so
+ * cross-cutting work launched from ~ does not leak into a personal-name vault.
  */
 export function resolveVaultName(cwd?: string): string {
   const dir = cwd || process.cwd() || "/";
@@ -86,15 +145,18 @@ export function resolveVaultName(cwd?: string): string {
   const mapping = readVaultMapping();
   if (mapping[dir]) return mapping[dir];
 
-  if (isProjectDirectory(dir)) {
-    const base = dir.split("/").filter(Boolean).pop() || DEFAULT_VAULT;
-    return (
-      base
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .substring(0, 64) || DEFAULT_VAULT
-    );
+  // 2. Walk up to the nearest project marker (handles src/ and deeper launches).
+  const markerRoot = findProjectRootByMarkers(dir);
+  if (markerRoot) {
+    if (mapping[markerRoot]) return mapping[markerRoot];
+    return sanitizeVaultName(basename(markerRoot)) || DEFAULT_VAULT;
+  }
+
+  // 3. Git toplevel fallback for git repos missed by the marker walk.
+  const gitRoot = findGitToplevel(dir);
+  if (gitRoot) {
+    if (mapping[gitRoot]) return mapping[gitRoot];
+    return sanitizeVaultName(basename(gitRoot)) || DEFAULT_VAULT;
   }
 
   return DEFAULT_VAULT;
