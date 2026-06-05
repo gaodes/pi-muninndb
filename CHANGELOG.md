@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.5.0] - 2026-06-05
+
+### Added
+
+- **Real `prime-settings.json` config engine** — self-contained zero-dependency settings module (`src/settings.ts`) reads the `muninndb` key from `~/.pi/agent/prime-settings.json` (global) with optional project override at `.pi/prime-settings.json`, auto-seeds defaults on first load, and exposes typed getters. Configurable: `sse.enabled`, `sse.threshold`, `sse.newWriteScoreGate`, `prefetchLimit`, `checkpointTools`.
+- **Context-aware semantic triggers** — SSE subscription now passes the agent's working context (current prompt, recent memory concepts, vault name) as repeated `context=...` query params. This turns the subscription from a generic vault firehose into a targeted semantic trigger that surfaces only task-relevant memories.
+- **Session-evolving subscription context** — `before_agent_start` recomputes subscription context on every turn and re-subscribes when the context set changes, so triggers track the live task instead of going stale.
+- **Surface `muninndb_muninn_guide` on first connect** — session-start injection now reminds the agent to call `muninndb_muninn_guide` to learn vault-specific behavior, enrichment state, and behavior mode.
+- **Health self-check for hook liveness** — new `src/liveness.ts` tracks whether the SSE subscription, `tool_call` hook, and `context` hook are actually firing. `/muninn-health` reports these timestamps so a silent integration breakage becomes visible.
+
+### Changed
+
+- **Prompt framing adopts the mindset mantra** — session-start injection and the AGENTS.md section written by `/muninn-setup` now lead with "Saving is a mindset, not a checklist — when in doubt, save it." (per upstream `agent-prompting.md` best practice).
+- **README documents configuration + new behaviors** — added Configuration section with `muninndb` settings schema, expanded Extension Behaviors table with context-aware triggers, guide surfacing, and health liveness.
+
+## [1.4.5] - 2026-06-05
+
+### Fixed
+
+- **Vault resolution now walks up to the project root** — `resolveVaultName` only inspected the exact launch directory, so Pi sessions started from any sub-directory without a project marker (e.g. `repo/src`, `repo/src/commands`) silently fell back to the `default` vault. Memories from real project work leaked into `default` (363 memories accumulated there, the largest vault). `resolveVaultName` now:
+  - Walks up from the launch directory to the nearest ancestor containing a project marker (`findProjectRootByMarkers`), stopping at the home directory or filesystem root.
+  - Falls back to `git rev-parse --show-toplevel` (`findGitToplevel`) for git repos missed by the marker walk; handles worktrees and submodules.
+  - Preserves the homedir guard so cross-cutting work launched from `~` still resolves to `default` rather than a personal-name vault.
+  - Honors `~/.muninn/vaults.json` mappings for both the launch directory and the resolved project root.
+- The shared sanitizer is now exported as `sanitizeVaultName` from `src/vault.ts`.
+
 ## [1.4.4] - 2026-05-31
 
 ### Fixed

@@ -55,13 +55,13 @@ If MuninnDB isn't running when Pi starts, you'll see:
 
 ### Extension Hooks
 
-| Hook                 | What it does                                                                                        |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| `session_start`      | Health-check MuninnDB, start SSE subscription, notify user                                          |
-| `before_agent_start` | On first turn: tell LLM to call `muninndb_muninn_where_left_off`                                    |
-| `context`            | Push contradiction alerts, memory updates, and activation signals via SSE                           |
-| `session_shutdown`   | Clean up SSE connection                                                                             |
-| `tool_call`          | Auto-inject `vault` parameter, `annotate: true` on recall, batch nudge, and feedback hint on recall |
+| Hook                 | What it does                                                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `session_start`      | Health-check MuninnDB, start SSE subscription, notify user                                                              |
+| `before_agent_start` | Evolve SSE subscription context from current prompt; on first turn: pre-fetch memories, surface `muninndb_muninn_guide` |
+| `context`            | Push contradiction alerts, memory updates, and activation signals via SSE                                               |
+| `session_shutdown`   | Clean up SSE connection                                                                                                 |
+| `tool_call`          | Auto-inject `vault` parameter, `annotate: true` on recall, batch nudge, checkpoint hint, and feedback hint on recall    |
 
 ### MCP Tools (via MuninnDB on port 8750)
 
@@ -127,15 +127,19 @@ Plus 18 more — call `muninndb_muninn_guide` for the full list.
 
 The extension adds several automatic behaviors on top of the MCP tools:
 
-| Behavior                   | Description                                                                                                                       |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Vault auto-injection**   | All 39 `muninndb_muninn_*` tool calls receive the resolved vault name automatically. No need to pass `vault` manually.            |
-| **Recall annotations**     | `muninn_recall` calls automatically get `annotate: true`, so results include staleness, conflict, and trust metadata.             |
-| **Feedback hint**          | After each `muninn_recall`, a subtle context hint reminds the agent that `muninn_feedback` exists for quality scoring.            |
-| **Batch nudge**            | After 2+ individual `muninn_remember` calls in one turn, the extension nudges toward `muninn_remember_batch`.                     |
-| **SSE: contradictions**    | When a new memory conflicts with an existing one, the agent receives a `[⚠️ Contradiction detected]` context push.                |
-| **SSE: threshold crossed** | When a memory's activation score crosses the subscription threshold, the agent receives an `[📈 Activation signal]` context push. |
-| **SSE: new writes**        | High-scoring new memories (≥0.7) are pushed to the agent's context in real time.                                                  |
+| Behavior                            | Description                                                                                                                                                                                                 |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vault auto-injection**            | All 39 `muninndb_muninn_*` tool calls receive the resolved vault name automatically. No need to pass `vault` manually.                                                                                      |
+| **Recall annotations**              | `muninn_recall` calls automatically get `annotate: true`, so results include staleness, conflict, and trust metadata.                                                                                       |
+| **Feedback hint**                   | After each `muninn_recall`, a subtle context hint reminds the agent that `muninn_feedback` exists for quality scoring.                                                                                      |
+| **Batch nudge**                     | After 2+ individual `muninn_remember` calls in one turn, the extension nudges toward `muninn_remember_batch`.                                                                                               |
+| **Context-aware semantic triggers** | SSE subscriptions include the agent's working context (current prompt, recent memory concepts, vault name). MuninnDB fires triggers only when relevance exceeds threshold, not on every high-scoring write. |
+| **Evolving subscription context**   | Subscription context refreshes on every turn, so triggers track the live task instead of going stale.                                                                                                       |
+| **Guide surfacing**                 | Session-start injection reminds the agent to call `muninndb_muninn_guide` to learn vault-specific behavior and enrichment state.                                                                            |
+| **SSE: contradictions**             | When a new memory conflicts with an existing one, the agent receives a `[⚠️ Contradiction detected]` context push.                                                                                          |
+| **SSE: threshold crossed**          | When a memory's activation score crosses the subscription threshold, the agent receives an `[📈 Activation signal]` context push.                                                                           |
+| **SSE: new writes**                 | High-scoring new memories (≥ threshold) are pushed to the agent's context in real time.                                                                                                                     |
+| **Health liveness**                 | `/muninn-health` reports whether the SSE subscription, `tool_call` hook, and `context` hook are actually firing, so a broken integration is visible.                                                        |
 
 All LLM operations go through MCP. The extension only provides SSE subscription (which MCP cannot do), context injection, setup automation, and diagnostics.
 
@@ -296,6 +300,36 @@ This removes the MCP config, AGENTS.md section, and Pi extension registration. M
 | `~/.pi/agent/prime-settings.json` | Extension configuration                         |
 | `~/.muninn/muninn.env`            | MuninnDB embedder/enricher settings             |
 | `~/.muninn/data/`                 | MuninnDB data (Pebble DB)                       |
+
+## Configuration
+
+pi-muninndb reads its settings from the `muninndb` key in `prime-settings.json`. The first time the extension loads, it auto-seeds the following defaults into `~/.pi/agent/prime-settings.json`:
+
+```json
+{
+  "muninndb": {
+    "sse": {
+      "enabled": true,
+      "threshold": 0.7,
+      "newWriteScoreGate": 0.7
+    },
+    "prefetchLimit": 8,
+    "checkpointTools": ["git_commit_execute", "git_push", "git_tag"]
+  }
+}
+```
+
+Project-level overrides are supported at `.pi/prime-settings.json` (merged over global).
+
+| Key                     | Type     | Default                                     | Description                                                  |
+| ----------------------- | -------- | ------------------------------------------- | ------------------------------------------------------------ |
+| `sse.enabled`           | boolean  | `true`                                      | Master switch for the SSE semantic-trigger subscription.     |
+| `sse.threshold`         | number   | `0.7`                                       | Minimum activation score for a subscription match (0.0–1.0). |
+| `sse.newWriteScoreGate` | number   | `0.7`                                       | Minimum score to surface a `new_write` push to the agent.    |
+| `prefetchLimit`         | number   | `8`                                         | How many recent memories to pre-fetch at session start.      |
+| `checkpointTools`       | string[] | `git_commit_execute`, `git_push`, `git_tag` | Native Pi tools that trigger a checkpoint save hint.         |
+
+Lower `threshold` = more triggers (higher recall, lower precision). Higher `threshold` = fewer, more relevant pushes.
 
 ## Provenance
 

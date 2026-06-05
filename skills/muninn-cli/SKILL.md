@@ -29,12 +29,12 @@ MuninnDB is a single-binary cognitive memory server. The `muninn` CLI manages th
 
 The server exposes four ports:
 
-| Port | Protocol | Purpose |
-|------|----------|---------|
-| 8474 | MBP binary | Internal binary protocol |
-| 8475 | REST JSON | Direct API, health, stats |
-| 8476 | Web UI | Browser dashboard |
-| 8750 | MCP | AI tool integration (Pi, Claude, Cursor) |
+| Port | Protocol   | Purpose                                  |
+| ---- | ---------- | ---------------------------------------- |
+| 8474 | MBP binary | Internal binary protocol                 |
+| 8475 | REST JSON  | Direct API, health, stats                |
+| 8476 | Web UI     | Browser dashboard                        |
+| 8750 | MCP        | AI tool integration (Pi, Claude, Cursor) |
 
 Everything the Pi extension does (vault injection, SSE, MCP tools) flows through these ports. The CLI is how you operate the server itself.
 
@@ -42,17 +42,17 @@ Everything the Pi extension does (vault injection, SSE, MCP tools) flows through
 
 **Preference rule:** In a Pi session, prefer the `/muninn-*` slash commands over raw CLI. They handle confirmation prompts, vault marker files, and `prime-settings.json` updates. Fall back to raw `muninn` CLI only when (1) the slash command is not available, (2) the user explicitly asks for the raw command, or (3) you need a flag the slash command does not expose.
 
-| Pi command | Underlying operation |
-|-----------|---------------------|
-| `/muninn-setup` | Interactive install + `muninn init` (tool discovery and config-file scaffolding) |
-| `/muninn-remove` | Remove MuninnDB integration |
-| `/muninn-vault` | `muninn vault list/create/unlink` |
-| `/muninn-dream` | `muninn dream --dry-run` then confirm |
-| `/muninn-backup` | `muninn vault export` + `muninn backup` |
-| `/muninn-health` | REST health check + `muninn status` |
-| `/muninn-import` | `muninn vault import` |
-| `/muninn-upgrade` | `muninn version` + `muninn upgrade` |
-| `/muninn-test` | Direct MCP HTTP tests (no CLI) |
+| Pi command        | Underlying operation                                                             |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `/muninn-setup`   | Interactive install + `muninn init` (tool discovery and config-file scaffolding) |
+| `/muninn-remove`  | Remove MuninnDB integration                                                      |
+| `/muninn-vault`   | `muninn vault list/create/unlink`                                                |
+| `/muninn-dream`   | `muninn dream --dry-run` then confirm                                            |
+| `/muninn-backup`  | `muninn vault export` + `muninn backup`                                          |
+| `/muninn-health`  | REST health check + `muninn status`                                              |
+| `/muninn-import`  | `muninn vault import`                                                            |
+| `/muninn-upgrade` | `muninn version` + `muninn upgrade`                                              |
+| `/muninn-test`    | Direct MCP HTTP tests (no CLI)                                                   |
 
 ## Core Operations
 
@@ -230,6 +230,7 @@ MUNINN_ENRICH_URL=ollama://localhost:11434/gemma3:4b
 ```
 
 After editing `muninn.env`, restart for changes to take effect:
+
 ```bash
 muninn restart
 ```
@@ -318,11 +319,13 @@ curl -sf http://127.0.0.1:8750/mcp -X POST \
 ## Troubleshooting
 
 **Server won't start after edit to muninn.env:**
+
 ```bash
 muninn logs --no-follow   # Check for config parse errors
 ```
 
 **`muninn exec` fails with lock error:**
+
 ```bash
 muninn stop    # Daemon holds exclusive lock — stop it first
 muninn exec recall --query "..."
@@ -330,6 +333,7 @@ muninn start   # Restart after exec
 ```
 
 **Dream fails silently:**
+
 ```bash
 # Verify MUNINN_ENRICH_URL is set:
 cat ~/.muninn/muninn.env | grep ENRICH
@@ -340,6 +344,7 @@ muninn logs --no-follow | tail -50
 ```
 
 **Port conflict (another process on 8475/8750):**
+
 ```bash
 lsof -i :8475 -i :8750    # See what's using the ports
 # Start with custom addresses:
@@ -347,6 +352,7 @@ muninn start --mcp-addr :9750
 ```
 
 **Vault API key lost:**
+
 ```bash
 muninn api-key list --vault my-project    # Keys are listed (tokens not shown)
 muninn api-key revoke <key-id>            # Revoke old key
@@ -354,6 +360,7 @@ muninn api-key create --vault my-project --label replacement  # New key
 ```
 
 **Pi MCP tools not connecting (e.g. `muninndb_muninn_recall` failing):**
+
 ```bash
 muninn status             # Check server is up; all ports should show [up]
 muninn logs --no-follow   # Look for auth errors or TLS mismatches

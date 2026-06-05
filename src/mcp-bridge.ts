@@ -1,5 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { resolveVaultName } from "./vault";
+import { loadSettings } from "./settings";
+import { markToolCallObserved } from "./liveness";
 
 // ============================================================
 // MCP Bridge — Vault Injection + Batch Nudge for MuninnDB Tools
@@ -69,7 +71,7 @@ let individualRememberCount = 0;
 
 // Tools that indicate significant "save-worthy" work just completed.
 // The tool_call hook fires for all Pi tools, not only MCP tools.
-const CHECKPOINT_TOOLS = new Set(["git_commit_execute", "git_push", "git_tag"]);
+// Loaded from settings so users can customize the checkpoint tool list.
 
 /**
  * Registers tool_call hooks for MuninnDB MCP tools:
@@ -83,16 +85,16 @@ export function registerVaultInjection(pi: ExtensionAPI): void {
     individualRememberCount = 0;
   });
 
-  // NOTE: "tool_call" is an undocumented Pi event not in the public ExtensionAPI
-  // type definitions. It fires before each tool call, allowing param injection
-  // and side-channel messages. The cast to `any` bypasses the type contract.
-  // If Pi changes or removes this event, vault injection and checkpoint hints
-  // will silently stop working — test after each Pi update.
+  // NOTE: "tool_call" is a Pi extension event that fires before each tool call,
+  // allowing param injection and side-channel messages. The cast to `any` is a
+  // compatibility shim. Liveness is tracked so `/muninn-health` can surface
+  // integration health if this hook ever stops firing.
   (pi as any).on("tool_call", async (event: any, _ctx: any) => {
     // Post-commit/push checkpoint: remind the LLM to save memories after
     // significant git operations. Fires best-effort — only if tool_call
     // hook fires for Pi native tools (not just MCP tools).
-    if (CHECKPOINT_TOOLS.has(event.toolName)) {
+    const checkpointTools = new Set(loadSettings().checkpointTools);
+    if (checkpointTools.has(event.toolName)) {
       const vault = resolveVaultName(process.cwd());
       return {
         message: {
@@ -109,6 +111,8 @@ export function registerVaultInjection(pi: ExtensionAPI): void {
     // Only intercept known MuninnDB MCP tools (allowlist, not prefix match)
     if (!MUNINN_TOOLS.has(event.toolName)) return;
     if (!event.input) return;
+
+    markToolCallObserved();
 
     const input = event.input as Record<string, unknown>;
 
