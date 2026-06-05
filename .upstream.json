@@ -10,7 +10,7 @@
   },
   "creationMethod": "fork",
   "createdAt": "2026-05-23T16:22:20+0300",
-  "updatedAt": "2026-05-29T17:30:00+0300",
+  "updatedAt": "2026-06-05T04:29:43+0300",
   "inspirations": [
     {
       "name": "muninndb",
@@ -44,6 +44,22 @@
       "date": "2026-05-29",
       "description": "Refactor setup flow: remove Docker/Podman container fallback, direct binary download with SHA-256 verification, and container port checks. Replace with official MuninnDB install script (install.sh / install.ps1). Binary search now includes ~/.local/bin/muninn.",
       "files": ["src/setup.ts", "tests/setup.test.ts", "README.md", "CHANGELOG.md"]
+    },
+    {
+      "date": "2026-06-05",
+      "description": "Add v1.5.0 semantic memory improvements: prime-settings.json configuration engine, context-aware SSE semantic triggers with evolving per-turn context, guide surfacing on first connect, health liveness self-checks, and mindset-oriented save guidance.",
+      "files": [
+        "src/settings.ts",
+        "src/client.ts",
+        "src/extension.ts",
+        "src/liveness.ts",
+        "src/commands/health.ts",
+        "src/mcp-bridge.ts",
+        "src/setup.ts",
+        "README.md",
+        "CHANGELOG.md",
+        "package.json"
+      ]
     }
   ],
   "updates": [
@@ -51,6 +67,11 @@
       "date": "2026-05-29T17:30:00+0300",
       "description": "Refactor setup: remove Docker/Podman fallback, direct binary download with SHA-256 verification, and container ports. Replace with official MuninnDB install script (muninndb.com/install.sh or install.ps1). Update README, CHANGELOG, and tests accordingly.",
       "type": "refactor"
+    },
+    {
+      "date": "2026-06-05T04:29:43+0300",
+      "description": "Release v1.5.0: context-aware semantic triggers, session-evolving subscription context, prime-settings.json config engine, muninndb_muninn_guide surfacing, health liveness self-checks, and mindset-oriented save guidance.",
+      "type": "release"
     }
   ]
 }
