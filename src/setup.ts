@@ -53,6 +53,8 @@ You have persistent memory via MuninnDB. Use it actively — never rely on local
 
 The pi-muninndb extension **automatically pre-fetches recent memories at session start** and injects them as context before your first turn. You do not need to call \`muninndb_muninn_where_left_off\` manually on every session — the extension handles it.
 
+On first connect, also call \`muninndb_muninn_guide\` to learn vault-specific behavior (enrichment state, behavior mode, and any vault-level notes).
+
 If you need to search by topic, use \`muninndb_muninn_recall\` with relevant context phrases.
 
 ## Vault: Automatic Resolution
@@ -66,6 +68,10 @@ The vault is resolved automatically from the working directory:
 **Do not pass a \`vault\` parameter.** The \`tool_call\` hook auto-injects the resolved vault on every \`muninndb_muninn_*\` call. Run \`/muninn-vault status\` to inspect the current vault and resolution method.
 
 ## Save Protocol
+
+**Saving is a mindset, not a checklist — when in doubt, save it.**
+Anything the user shares or that emerges from the work should be saved immediately.
+Do not evaluate whether it is "important enough". The practical flow:
 
 1. **ASSESS** — Before saving, review the exchange and identify all memories worth saving.
 2. **CHOOSE** — Based on count:

@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { resolveVaultName, MUNINN_REST_URL } from "../vault";
+import { liveness } from "../liveness";
 
 interface ServicePorts {
   rest: number | null;
@@ -23,6 +24,17 @@ function parseServicePorts(statusOutput: string): ServicePorts {
     mcp: mcp ? Number(mcp[1]) : null,
     ui: ui ? Number(ui[1]) : null,
   };
+}
+
+function formatAgo(ts: number | null): string {
+  if (ts == null) return "never";
+  const seconds = Math.round((Date.now() - ts) / 1000);
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h ago`;
 }
 
 function parseTotalVaults(showVaultsOutput: string): number | null {
@@ -153,6 +165,14 @@ export function registerHealthCommand(pi: ExtensionAPI): void {
         `Vault memory count: ${vaultMemoryCount ?? "unknown"}`,
         `Vault coherence: ${vaultCoherenceScore !== null ? vaultCoherenceScore.toFixed(3) : "unknown"}`,
         `Total vaults: ${totalVaults ?? "unknown"}`,
+        "",
+        "Extension liveness:",
+        `  SSE last subscribe attempt: ${formatAgo(liveness.sseSubscribedAt)}`,
+        `  SSE last successful connect: ${formatAgo(liveness.sseConnectedAt)}`,
+        `  SSE last error: ${formatAgo(liveness.sseErroredAt)}`,
+        `  Last SSE push received: ${formatAgo(liveness.lastSsePushAt)}`,
+        `  tool_call hook observed: ${formatAgo(liveness.toolCallObservedAt)}`,
+        `  context hook observed: ${formatAgo(liveness.contextHookObservedAt)}`,
       ];
 
       if (reportNotes.length > 0) {

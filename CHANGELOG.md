@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-05
+
+### Added
+
+- **Real `prime-settings.json` config engine** — self-contained zero-dependency settings module (`src/settings.ts`) reads the `muninndb` key from `~/.pi/agent/prime-settings.json` (global) with optional project override at `.pi/prime-settings.json`, auto-seeds defaults on first load, and exposes typed getters. Configurable: `sse.enabled`, `sse.threshold`, `sse.newWriteScoreGate`, `prefetchLimit`, `checkpointTools`.
+- **Context-aware semantic triggers** — SSE subscription now passes the agent's working context (current prompt, recent memory concepts, vault name) as repeated `context=...` query params. This turns the subscription from a generic vault firehose into a targeted semantic trigger that surfaces only task-relevant memories.
+- **Session-evolving subscription context** — `before_agent_start` recomputes subscription context on every turn and re-subscribes when the context set changes, so triggers track the live task instead of going stale.
+- **Surface `muninndb_muninn_guide` on first connect** — session-start injection now reminds the agent to call `muninndb_muninn_guide` to learn vault-specific behavior, enrichment state, and behavior mode.
+- **Health self-check for hook liveness** — new `src/liveness.ts` tracks whether the SSE subscription, `tool_call` hook, and `context` hook are actually firing. `/muninn-health` reports these timestamps so a silent integration breakage becomes visible.
+
+### Changed
+
+- **Prompt framing adopts the mindset mantra** — session-start injection and the AGENTS.md section written by `/muninn-setup` now lead with "Saving is a mindset, not a checklist — when in doubt, save it." (per upstream `agent-prompting.md` best practice).
+- **README documents configuration + new behaviors** — added Configuration section with `muninndb` settings schema, expanded Extension Behaviors table with context-aware triggers, guide surfacing, and health liveness.
+
 ## [1.4.5] - 2026-06-05
 
 ### Fixed

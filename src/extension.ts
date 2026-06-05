@@ -1,7 +1,17 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { BeforeAgentStartEvent } from "@earendil-works/pi-coding-agent";
 import { MuninnClient } from "./client";
 import { resolveVaultName, MUNINN_REST_URL, MUNINN_MCP_URL } from "./vault";
 import type { ActivationPush } from "./vault";
+import { loadSettings } from "./settings";
+import {
+  markSseSubscribed,
+  markSseConnected,
+  markSseErrored,
+  markSsePushReceived,
+  markContextHookObserved,
+  resetLiveness,
+} from "./liveness";
 
 // ─── Shared client singleton ──────────────────────────────────────────
 
@@ -23,7 +33,7 @@ interface RecentMemory {
  * added by Pi's MCP adapter for namespacing, not by MuninnDB itself).
  * Returns empty array on any error for graceful degradation.
  */
-async function fetchWhereLeftOff(vault: string, limit = 8): Promise<RecentMemory[]> {
+async function fetchWhereLeftOff(vault: string, limit: number = 8): Promise<RecentMemory[]> {
   try {
     const res = await fetch(MUNINN_MCP_URL, {
       method: "POST",
@@ -56,17 +66,71 @@ async function fetchWhereLeftOff(vault: string, limit = 8): Promise<RecentMemory
   }
 }
 
-// ─── SSE subscription filter ──────────────────────────────────────────
+// ─── Subscription context derivation ──────────────────────────────────
 
-function startSSESubscription(vault: string, signal: AbortSignal, onPush: (push: ActivationPush) => void): void {
+/**
+ * Derive 1-3 semantic context strings for SSE subscription.
+ *
+ * Best available signal: the user's prompt text from BeforeAgentStartEvent.
+ * Falls back to prefetched memory concepts + vault name if no prompt yet.
+ * Degrades gracefully to no contexts (vault-only firehose) if nothing available.
+ */
+function deriveSubscriptionContexts(prompt: string | undefined, vault: string, memories: RecentMemory[]): string[] {
+  const contexts: string[] = [];
+
+  // Primary: user's current prompt/task
+  if (prompt && prompt.trim().length > 0) {
+    // Truncate to 200 chars — long contexts waste embedding compute
+    const truncated = prompt.trim().substring(0, 200);
+    contexts.push(truncated);
+  }
+
+  // Secondary: concepts from recent memories (what the agent was working on)
+  if (contexts.length < 2 && memories.length > 0) {
+    const concepts = memories
+      .slice(0, 3)
+      .map((m) => m.concept)
+      .filter((c): c is string => !!c && c.length > 0)
+      .join("; ");
+    if (concepts.length > 0) {
+      contexts.push(concepts.substring(0, 200));
+    }
+  }
+
+  // Tertiary: vault name as a broad signal for project-relevant triggers
+  if (vault !== "default" && contexts.length < 3) {
+    contexts.push(`project: ${vault}`);
+  }
+
+  return contexts;
+}
+
+// ─── SSE subscription management ──────────────────────────────────────
+
+function startSSESubscription(
+  vault: string,
+  contexts: string[],
+  threshold: number,
+  signal: AbortSignal,
+  onPush: (push: ActivationPush) => void,
+  scoreGate: number,
+): void {
+  markSseSubscribed();
   (async () => {
     try {
-      for await (const push of client.subscribe(vault, signal)) {
+      for await (const push of client.subscribe(
+        vault,
+        { contexts: contexts.length > 0 ? contexts : undefined, threshold },
+        signal,
+        markSseConnected,
+        markSseErrored,
+      )) {
+        markSsePushReceived();
         if (push.trigger === "contradiction_detected") {
           onPush(push);
         } else if (push.trigger === "threshold_crossed" && push.engram && push.score != null) {
           onPush(push);
-        } else if (push.trigger === "new_write" && push.engram && push.score != null && push.score >= 0.7) {
+        } else if (push.trigger === "new_write" && push.engram && push.score != null && push.score >= scoreGate) {
           onPush(push);
         }
       }
@@ -85,9 +149,39 @@ export default function registerLifecycleHooks(pi: ExtensionAPI) {
   let isFirstTurn = true;
   let muninnUp = false;
 
+  // Track the current subscription contexts to detect changes
+  let activeContexts: string[] = [];
+
+  /** (Re)start the SSE subscription with the given contexts. */
+  function restartSubscription(contexts: string[]): void {
+    const settings = loadSettings();
+    if (!settings.sse.enabled) return;
+
+    // Only re-subscribe when the context set materially changed
+    const changed = contexts.length !== activeContexts.length || contexts.some((c, i) => c !== activeContexts[i]);
+    if (!changed && sseAbort) return;
+
+    // Tear down existing subscription
+    sseAbort?.abort();
+    pendingPushes = [];
+    activeContexts = contexts;
+
+    sseAbort = new AbortController();
+    startSSESubscription(
+      currentVault,
+      activeContexts,
+      settings.sse.threshold,
+      sseAbort.signal,
+      (push) => pendingPushes.push(push),
+      settings.sse.newWriteScoreGate,
+    );
+  }
+
   pi.on("session_start", async (_event, ctx) => {
     currentVault = resolveVaultName(process.cwd());
     isFirstTurn = true;
+    activeContexts = [];
+    const settings = loadSettings();
 
     try {
       const res = await fetch(`${MUNINN_REST_URL}/api/health`);
@@ -103,8 +197,10 @@ export default function registerLifecycleHooks(pi: ExtensionAPI) {
 
     ctx.ui.notify(`MuninnDB: vault "${currentVault}"`, "info");
 
-    sseAbort = new AbortController();
-    startSSESubscription(currentVault, sseAbort.signal, (push) => pendingPushes.push(push));
+    // Start SSE with vault-only context (no prompt yet); will evolve on before_agent_start
+    if (settings.sse.enabled) {
+      restartSubscription([]);
+    }
   });
 
   pi.on("session_shutdown", async () => {
@@ -112,15 +208,30 @@ export default function registerLifecycleHooks(pi: ExtensionAPI) {
     sseAbort = null;
     pendingPushes = [];
     isFirstTurn = true;
+    activeContexts = [];
+    resetLiveness();
   });
 
-  pi.on("before_agent_start", async () => {
-    if (!muninnUp || !isFirstTurn) return;
+  pi.on("before_agent_start", async (event: BeforeAgentStartEvent) => {
+    // Always evolve subscription context on each turn (Issue #2)
+    const prompt = (event as BeforeAgentStartEvent).prompt;
+    const settings = loadSettings();
+    const firstTurn = isFirstTurn;
     isFirstTurn = false;
 
-    // Attempt to pre-fetch recent memories directly so session context
-    // is available without requiring the LLM to call where_left_off first.
-    const memories = await fetchWhereLeftOff(currentVault);
+    // Fetch recent memories ONCE on the first turn and reuse for both
+    // context derivation (subscription semantics) and the session-start
+    // injection below. Avoids the double MCP round-trip from earlier.
+    const memories = firstTurn && muninnUp ? await fetchWhereLeftOff(currentVault, settings.prefetchLimit) : [];
+
+    if (muninnUp && settings.sse.enabled) {
+      // Derive context from current prompt + vault + recent memories
+      const newContexts = deriveSubscriptionContexts(prompt, currentVault, memories);
+      restartSubscription(newContexts);
+    }
+
+    // First-turn session context injection (existing behavior)
+    if (!muninnUp || !firstTurn) return;
 
     if (memories.length === 0) {
       // MCP unavailable or vault is empty — fall back to instruction
@@ -129,8 +240,10 @@ export default function registerLifecycleHooks(pi: ExtensionAPI) {
           customType: "muninn_session_start",
           content:
             `MuninnDB memory connected (vault: "${currentVault}"). ` +
+            `Saving is a mindset, not a checklist — when in doubt, save it. ` +
             `Call muninndb_muninn_where_left_off to restore context from your last session, ` +
-            `then muninndb_muninn_recall for topic-specific searches.`,
+            `muninndb_muninn_recall for topic-specific searches, ` +
+            `and muninndb_muninn_guide to learn vault-specific behavior.`,
           display: false,
         },
       };
@@ -138,7 +251,7 @@ export default function registerLifecycleHooks(pi: ExtensionAPI) {
 
     // Format memories as compact numbered context lines
     const lines = memories
-      .slice(0, 8)
+      .slice(0, settings.prefetchLimit)
       .map((m, i) => {
         const label = m.concept ?? "Memory";
         const detail = m.summary ?? (m.content ? m.content.substring(0, 120) : "");
@@ -152,19 +265,21 @@ export default function registerLifecycleHooks(pi: ExtensionAPI) {
         content:
           `🌊 Session context restored (vault: "${currentVault}", ${memories.length} recent memories):\n\n` +
           lines +
-          `\n\nUse muninndb_muninn_recall for topic-specific searches throughout this session. ` +
-          `After significant work (commits, decisions, releases), ` +
-          `save with muninndb_muninn_remember_batch.`,
+          `\n\nSaving is a mindset, not a checklist — when in doubt, save it. ` +
+          `Use muninndb_muninn_recall for topic-specific searches, ` +
+          `muninndb_muninn_guide to learn vault-specific behavior, ` +
+          `and muninndb_muninn_remember_batch after significant work (commits, decisions, releases).`,
         display: false,
       },
     };
   });
 
-  // NOTE: "context" is an undocumented Pi extension event not in the public
-  // type definitions. It fires before each LLM context assembly, allowing
-  // injection of additional context messages. If Pi removes or renames this
-  // event in a future version, SSE push notifications will silently stop.
+  // NOTE: "context" is a Pi extension event that fires before each LLM context
+  // assembly, allowing injection of additional context messages. Liveness is
+  // tracked in `src/liveness.ts` so `/muninn-health` can surface integration
+  // health if this hook ever stops firing.
   pi.on("context" as any, async () => {
+    markContextHookObserved();
     if (pendingPushes.length === 0) return;
 
     const relevant = pendingPushes
